@@ -16551,7 +16551,9 @@ details.expandMenu[open] summary.expandMenu::before {
 }</style>
 <script>
 /* Storage fallback: localStorage/sessionStorage/indexedDB may be missing or throw
-   (private windows, blocked storage). Keep an in-memory stub so boot cannot loop. */
+   (private windows, blocked storage). Keep an in-memory stub so boot cannot loop.
+   This script must run before SugarCube libraries: SugarCube disables its IDB
+   adapter only when window.indexedDB == null, and otherwise calls indexedDB.open(). */
 (function(){
   function makeStub(){
     var mem = {};
@@ -16576,15 +16578,26 @@ details.expandMenu[open] summary.expandMenu::before {
       return ok;
     } catch (e) { return false; }
   }
-  function ensure(name, stub){
-    try { if (works(window[name])) return; } catch (e) {}
-    try { delete window[name]; } catch (e) {}
+  function defineOn(obj, name, stub){
     try {
-      Object.defineProperty(window, name, { value: stub, configurable: true, writable: true });
-      if (works(window[name])) return;
+      Object.defineProperty(obj, name, { value: stub, configurable: true, writable: true, enumerable: true });
+      return works(obj[name]);
+    } catch (e) { return false; }
+  }
+  function ensure(name, stub){
+    try { if (works(window[name])) return true; } catch (e) {}
+    try { delete window[name]; } catch (e) {}
+    if (defineOn(window, name, stub)) return true;
+    try {
+      if (typeof Window !== "undefined" && Window.prototype && defineOn(Window.prototype, name, stub)) return true;
     } catch (e) {}
     try { window[name] = stub; } catch (e) {}
+    try { return works(window[name]); } catch (e) { return false; }
   }
+  var nativeLS = false;
+  var nativeSS = false;
+  try { nativeLS = works(window.localStorage); } catch (e) {}
+  try { nativeSS = works(window.sessionStorage); } catch (e) {}
   ensure("localStorage", memLS);
   ensure("sessionStorage", memSS);
   try {
@@ -16605,6 +16618,31 @@ details.expandMenu[open] summary.expandMenu::before {
       });
     }
   } catch (e) {}
+  function disableIndexedDB(){
+    function setNull(obj){
+      try { delete obj.indexedDB; } catch (e) {}
+      try {
+        Object.defineProperty(obj, "indexedDB", { value: null, configurable: true, writable: true, enumerable: true });
+        return obj.indexedDB == null;
+      } catch (e) {
+        try { obj.indexedDB = null; return obj.indexedDB == null; } catch (e2) { return false; }
+      }
+    }
+    setNull(window);
+    try { if (typeof Window !== "undefined" && Window.prototype) setNull(Window.prototype); } catch (e) {}
+  }
+  function idbUnusable(){
+    try {
+      if (window.indexedDB == null) return true;
+      if (typeof window.indexedDB.open !== "function") return true;
+    } catch (e) { return true; }
+    try { window.indexedDB.open("__dol_idb_probe__"); }
+    catch (e) { return true; }
+    return false;
+  }
+  if (!nativeLS || !nativeSS || idbUnusable()) {
+    disableIndexedDB();
+  }
   window.plusneedsMemoryStore = function(storageId, persistent){
     var key = String(storageId) + (persistent ? "!p" : "!s");
     var root = window.__plusneedsMem = window.__plusneedsMem || {};
@@ -70921,30 +70959,109 @@ DefineMacro("tanningGainOutput", function () {
 
 DefineMacroS("tanningPenaltiesOutput", Skin.tanningPenaltiesOutput);
 /* twine-user-script #117: "game/03-JavaScript/storage-polyfill.js" */
-/* Storage polyfill for no-storage mode.
- * If localStorage/sessionStorage/indexedDB throw SecurityError, fall back to in-memory. */
+/* Late safety net for no-storage mode.
+ * The primary fallback lives in devTools/head.html and is prepended before
+ * SugarCube so indexedDB can be nulled before SugarCube's adapter IIFE runs.
+ * This copy covers user-script evaluation if head insertion was skipped. */
 (function () {
-  "use strict";
-  function makeMemoryStorage() {
-    var store = {};
-    return {
-      getItem: function (k) { return Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null; },
-      setItem: function (k, v) { store[k] = String(v); },
-      removeItem: function (k) { delete store[k]; },
-      clear: function () { store = {}; },
-      key: function (i) { return Object.keys(store)[i] || null; },
-      get length() { return Object.keys(store).length; }
-    };
-  }
-  try { window.localStorage.getItem("__test"); } catch (e) {
-    try { Object.defineProperty(window, "localStorage", { value: makeMemoryStorage(), configurable: true }); } catch (e2) {}
-  }
-  try { window.sessionStorage.getItem("__test"); } catch (e) {
-    try { Object.defineProperty(window, "sessionStorage", { value: makeMemoryStorage(), configurable: true }); } catch (e2) {}
-  }
-  try { if (window.indexedDB) window.indexedDB; } catch (e) {
-    try { Object.defineProperty(window, "indexedDB", { value: null, configurable: true }); } catch (e2) {}
-  }
+	"use strict";
+	function makeMemoryStorage() {
+		let store = {};
+		return {
+			getItem(k) {
+				return Object.hasOwn(store, k) ? store[k] : null;
+			},
+			setItem(k, v) {
+				store[k] = String(v);
+			},
+			removeItem(k) {
+				delete store[k];
+			},
+			clear() {
+				store = {};
+			},
+			key(i) {
+				return Object.keys(store)[i] || null;
+			},
+			get length() {
+				return Object.keys(store).length;
+			},
+		};
+	}
+	function works(s) {
+		try {
+			if (!s || typeof s.getItem !== "function" || typeof s.setItem !== "function") return false;
+			const t = "__dol_store_test__";
+			s.setItem(t, "1");
+			const ok = s.getItem(t) === "1";
+			s.removeItem(t);
+			return ok;
+		} catch (e) {
+			return false;
+		}
+	}
+	function ensure(name, stub) {
+		try {
+			if (works(window[name])) return true;
+		} catch (e) {}
+		try {
+			delete window[name];
+		} catch (e) {}
+		try {
+			Object.defineProperty(window, name, { value: stub, configurable: true, writable: true });
+			if (works(window[name])) return true;
+		} catch (e) {}
+		try {
+			window[name] = stub;
+		} catch (e) {}
+		return false;
+	}
+	let nativeLS = false;
+	let nativeSS = false;
+	try {
+		nativeLS = works(window.localStorage);
+	} catch (e) {}
+	try {
+		nativeSS = works(window.sessionStorage);
+	} catch (e) {}
+	try {
+		window.localStorage.getItem("__test");
+	} catch (e) {
+		ensure("localStorage", makeMemoryStorage());
+	}
+	try {
+		window.sessionStorage.getItem("__test");
+	} catch (e) {
+		ensure("sessionStorage", makeMemoryStorage());
+	}
+	if (!nativeLS) ensure("localStorage", makeMemoryStorage());
+	if (!nativeSS) ensure("sessionStorage", makeMemoryStorage());
+	function disableIndexedDB() {
+		try {
+			Object.defineProperty(window, "indexedDB", { value: null, configurable: true, writable: true });
+		} catch (e) {
+			try {
+				window.indexedDB = null;
+			} catch (e2) {}
+		}
+	}
+	function idbUnusable() {
+		try {
+			if (window.indexedDB == null) return true;
+			if (typeof window.indexedDB.open !== "function") return true;
+		} catch (e) {
+			return true;
+		}
+		try {
+			window.indexedDB.open("__dol_idb_probe__");
+		} catch (e) {
+			return true;
+		}
+		return false;
+	}
+	if (!nativeLS || !nativeSS || idbUnusable()) {
+		disableIndexedDB();
+	}
 })();
 /* twine-user-script #118: "game/03-JavaScript/tabs.js" */
 const Tab = class {
@@ -229195,7 +229312,7 @@ If CSSANIM is true (default false), render multiple frames for CSS animation
 			&lt;&lt;/if&gt;&gt;
 			&lt;div class=&quot;wardrobeItem wardrobe-action no-numberify&quot;&gt;
 				&lt;&lt;clothingicon _item _wardrobe_list&gt;&gt;
-				&lt;&lt;wearlink_norefresh _itemData.name_cap _i&gt;&gt;
+				&lt;&lt;wearlink_norefresh _itemData.name_cap _i&gt;&gt;&lt;&lt;print plusDiaperFillLabel(_item)&gt;&gt;
 				&lt;&lt;if _item.gender is &quot;m&quot;&gt;&gt;
 					&lt;span class=&quot;blue&quot;&gt;♂&lt;/span&gt;
 				&lt;&lt;elseif _item.gender is &quot;f&quot;&gt;&gt;
@@ -574630,7 +574747,8 @@ The adult shop is closed. A sign reads: &quot;Opening hours: &lt;&lt;ampm 16 00&
 	&lt;br&gt;&lt;br&gt;
 	&lt;&lt;elkicon&gt;&gt;&lt;&lt;link [[Elk Street (0:01)|Elk Street]]&gt;&gt;&lt;&lt;pass 1&gt;&gt;&lt;&lt;adultShopClear&gt;&gt;&lt;&lt;/link&gt;&gt;
 
-&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="4810" name="Adult Shop Store" tags="" position="1225,60100" size="100,100">/*&lt;&lt;exiticon&gt;&gt;&lt;&lt;link [[Exit (0:01)|Adult Shop]]&gt;&gt;&lt;&lt;pass 1&gt;&gt;&lt;&lt;/link&gt;&gt;*/
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="4810" name="Adult Shop Store" tags="" position="1225,60100" size="100,100">&lt;&lt;plusDiaperShop &quot;adult&quot;&gt;&gt;
+/*&lt;&lt;exiticon&gt;&gt;&lt;&lt;link [[Exit (0:01)|Adult Shop]]&gt;&gt;&lt;&lt;pass 1&gt;&gt;&lt;&lt;/link&gt;&gt;*/
 &lt;div id=&quot;clothingShop-div&quot; class=&quot;main-shop-div&quot;&gt;
 	&lt;&lt;adultShop-main&gt;&gt;
 &lt;/div&gt;</tw-passagedata><tw-passagedata pid="4811" name="Adult Shop Approach Sirris" tags="" position="100,60225" size="100,100">/*&lt;&lt;npc &quot;Sirris&quot;&gt;&gt; clothes bug */
@@ -650700,7 +650818,8 @@ Looking fearful, Harper gives up on the machine and, grabbing the wires, tries t
 	&lt;&lt;link [[Everything fades to black...|Abduction Hospital]]&gt;&gt;&lt;&lt;set $phase to 0&gt;&gt;&lt;&lt;/link&gt;&gt;
 &lt;&lt;else&gt;&gt;
 	&lt;&lt;link [[Everything fades to black...|Molestation Hospital]]&gt;&gt;&lt;&lt;set $molestationstart to 1&gt;&gt;&lt;&lt;/link&gt;&gt;
-&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="7108" name="Pharmacy" tags="" position="975,88850" size="100,100">&lt;&lt;unset $pharmacyItem&gt;&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="7108" name="Pharmacy" tags="" position="975,88850" size="100,100">&lt;&lt;plusDiaperShop &quot;pharmacy&quot;&gt;&gt;
+&lt;&lt;unset $pharmacyItem&gt;&gt;
 &lt;&lt;if $daily.pharm.closed&gt;&gt;
 	A &quot;Closed&quot; sign hangs on the door. You tug the door but it&#39;s locked.
 	&lt;br&gt;&lt;br&gt;
@@ -651530,7 +651649,8 @@ You count the money and give it to &lt;&lt;him&gt;&gt;.
 		You don&#39;t have to wait long. Doctor Harper emerges from &lt;&lt;his&gt;&gt; office and beckons you over. You follow &lt;&lt;him&gt;&gt; in and take a seat.
 	&lt;&lt;/if&gt;&gt;
 	&lt;br&gt;&lt;br&gt;
-&lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="7127" name="Pharmacy Condoms Price" tags="widget" position="850,89100" size="100,100">&lt;&lt;widget condomsPrice&gt;&gt;
+&lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="7127" name="Pharmacy Condoms Price" tags="widget" position="850,89100" size="100,100">&lt;&lt;plusDiaperShop &quot;pharmacy&quot;&gt;&gt;
+&lt;&lt;widget condomsPrice&gt;&gt;
 	&lt;&lt;if _args[0] lte 50&gt;&gt;
 		&lt;&lt;set _price to _args[0] * 6000&gt;&gt;
 	&lt;&lt;elseif _args lte 100&gt;&gt;
@@ -686402,7 +686522,8 @@ The &lt;&lt;beasttype&gt;&gt; whimpers and flees into a bush. &lt;&lt;tearful&gt
 
 &lt;&lt;endcombat&gt;&gt;
 &lt;&lt;set $stress -= 1000&gt;&gt;&lt;&lt;set $eventskip to 1&gt;&gt;
-&lt;&lt;destination&gt;&gt;</tw-passagedata><tw-passagedata pid="8067" name="Men&#39;s Toilets" tags="" position="850,100850" size="100,100">&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;park&quot;&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;set $bus to &quot;parkmens&quot;&gt;&gt;
+&lt;&lt;destination&gt;&gt;</tw-passagedata><tw-passagedata pid="8067" name="Men&#39;s Toilets" tags="" position="850,100850" size="100,100">&lt;&lt;plusToiletLink&gt;&gt;
+&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;park&quot;&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;set $bus to &quot;parkmens&quot;&gt;&gt;
 
 You are in the men&#39;s toilets in the park.
 
@@ -686513,7 +686634,8 @@ You bend over a sink and rinse out your mouth.
 &lt;br&gt;&lt;br&gt;
 
 &lt;&lt;link [[Next|Men&#39;s Toilets]]&gt;&gt;&lt;&lt;/link&gt;&gt;
-&lt;br&gt;</tw-passagedata><tw-passagedata pid="8070" name="Women&#39;s Toilets" tags="" position="1225,100850" size="100,100">&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;park&quot;&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;set $bus to &quot;parkwomens&quot;&gt;&gt;
+&lt;br&gt;</tw-passagedata><tw-passagedata pid="8070" name="Women&#39;s Toilets" tags="" position="1225,100850" size="100,100">&lt;&lt;plusToiletLink&gt;&gt;
+&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;park&quot;&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;set $bus to &quot;parkwomens&quot;&gt;&gt;
 
 You are in the women&#39;s toilets in the park.
 
@@ -724347,7 +724469,8 @@ You swallow the pill. A daze descends on you and a perverse warmth grows in your
 	&lt;&lt;link [[Next|Pub Accost]]&gt;&gt;&lt;&lt;set $phase to 1&gt;&gt;&lt;&lt;/link&gt;&gt;
 	&lt;br&gt;
 
-&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="9396" name="Canteen" tags="" position="725,117475" size="100,100">&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;school&quot;&gt;&gt;&lt;&lt;schooleffects&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;sydneySchedule&gt;&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="9396" name="Canteen" tags="" position="725,117475" size="100,100">&lt;&lt;plusCanteenLunch&gt;&gt;
+&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;school&quot;&gt;&gt;&lt;&lt;schooleffects&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;sydneySchedule&gt;&gt;
 You are in the school canteen.
 &lt;&lt;if Time.schoolDay&gt;&gt;
 	&lt;&lt;if $schoolstate is &quot;early&quot; or $schoolstate is &quot;late&quot;&gt;&gt;
@@ -763296,7 +763419,9 @@ You walk right up to the &lt;&lt;person&gt;&gt; and place your hand on &lt;&lt;h
 		&lt;&lt;link [[Next|School Girl&#39;s Toilets]]&gt;&gt;&lt;&lt;set $eventskip to 1&gt;&gt;&lt;&lt;/link&gt;&gt;
 		&lt;br&gt;
 	&lt;&lt;/if&gt;&gt;
-&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="10452" name="School Boy&#39;s Toilets" tags="" position="225,130725" size="100,100">&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;school&quot;&gt;&gt;&lt;&lt;schooleffects&gt;&gt;&lt;&lt;effects&gt;&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="10452" name="School Boy&#39;s Toilets" tags="" position="225,130725" size="100,100">&lt;&lt;plusToiletLink&gt;&gt;
+
+&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;school&quot;&gt;&gt;&lt;&lt;schooleffects&gt;&gt;&lt;&lt;effects&gt;&gt;
 &lt;&lt;set $changingRoomGender to &quot;boys&quot;&gt;&gt;
 You are in the boys&#39; toilets.
 &lt;&lt;if $upperwet gte 1 or $lowerwet gte 1 or $underlowerwet gte 1 or $underupperwet gte 1&gt;&gt;
@@ -763353,7 +763478,9 @@ You are in the boys&#39; toilets.
 	&lt;&lt;/if&gt;&gt;
 &lt;&lt;/if&gt;&gt;
 &lt;&lt;set $eventskip to 0&gt;&gt;
-&lt;&lt;storecleanup&gt;&gt;</tw-passagedata><tw-passagedata pid="10453" name="School Girl&#39;s Toilets" tags="" position="350,130725" size="100,100">&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;school&quot;&gt;&gt;&lt;&lt;schooleffects&gt;&gt;&lt;&lt;effects&gt;&gt;
+&lt;&lt;storecleanup&gt;&gt;</tw-passagedata><tw-passagedata pid="10453" name="School Girl&#39;s Toilets" tags="" position="350,130725" size="100,100">&lt;&lt;plusToiletLink&gt;&gt;
+
+&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;school&quot;&gt;&gt;&lt;&lt;schooleffects&gt;&gt;&lt;&lt;effects&gt;&gt;
 &lt;&lt;set $changingRoomGender to &quot;girls&quot;&gt;&gt;
 You are in the girls&#39; toilets.
 &lt;&lt;if $upperwet gte 1 or $lowerwet gte 1 or $underlowerwet gte 1 or $underupperwet gte 1&gt;&gt;
@@ -775519,7 +775646,9 @@ You browse through the selection of Off-Road upgrades.
 	&lt;br&gt;
 &lt;&lt;/if&gt;&gt;
 &lt;br&gt;
-&lt;&lt;getouticon&gt;&gt;&lt;&lt;link [[Back|Bike Depot]]&gt;&gt;&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="10556" name="Clothing Shop v2 Widgets" tags="widget" position="725,131975" size="100,100">&lt;&lt;widget &quot;exitclothingshop&quot;&gt;&gt;
+&lt;&lt;getouticon&gt;&gt;&lt;&lt;link [[Back|Bike Depot]]&gt;&gt;&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="10556" name="Clothing Shop v2 Widgets" tags="widget" position="725,131975" size="100,100">&lt;&lt;plusDiaperShop &quot;clothing&quot;&gt;&gt;
+
+&lt;&lt;widget &quot;exitclothingshop&quot;&gt;&gt;
 	&lt;div class=&quot;button-back-to-shop div-link&quot;&gt;
 		&lt;&lt;if $clothes_choice and $shopDefaults.alwaysBackToShopButton is false&gt;&gt;
 			&lt;&lt;link &quot;Back&quot;&gt;&gt;&lt;&lt;unset $clothes_choice&gt;&gt;&lt;&lt;updateclotheslist&gt;&gt;&lt;&lt;set $retrieveShopCustomColor to {}&gt;&gt;&lt;&lt;/link&gt;&gt;
@@ -777368,7 +777497,8 @@ You browse through the selection of Off-Road upgrades.
 	}))&gt;&gt;
 		&lt;&lt;set $worn.under_lower.exposedType to &quot;notBought&quot;&gt;&gt;
 	&lt;&lt;/if&gt;&gt;
-&lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="10557" name="Clothing Shop" tags="exitCheckBypass" position="850,131975" size="100,100">&lt;&lt;set $bus to &quot;clothingshop&quot;&gt;&gt;
+&lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="10557" name="Clothing Shop" tags="exitCheckBypass" position="850,131975" size="100,100">&lt;&lt;plusDiaperShop &quot;clothing&quot;&gt;&gt;
+&lt;&lt;set $bus to &quot;clothingshop&quot;&gt;&gt;
 &lt;div id=&quot;clothingShop-div&quot; class=&quot;main-shop-div&quot;&gt;
 	&lt;&lt;clothingShop-main&gt;&gt;
 &lt;/div&gt;</tw-passagedata><tw-passagedata pid="10558" name="Clothing Shop Widgets" tags="widget" position="975,131975" size="100,100">&lt;&lt;widget &quot;clothingShop-main&quot;&gt;&gt;
@@ -777623,7 +777753,9 @@ Would you like to enable this?
 
 &lt;&lt;/if&gt;&gt;
 &lt;&lt;link [[No|Clothing Shop]]&gt;&gt;&lt;&lt;/link&gt;&gt;
-&lt;br&gt;</tw-passagedata><tw-passagedata pid="10561" name="Clothing Shop Categories" tags="widget" position="100,132100" size="100,100">&lt;&lt;widget &quot;updateclothingshop&quot;&gt;&gt;
+&lt;br&gt;</tw-passagedata><tw-passagedata pid="10561" name="Clothing Shop Categories" tags="widget" position="100,132100" size="100,100">&lt;&lt;plusDiaperShop &quot;clothing&quot;&gt;&gt;
+
+&lt;&lt;widget &quot;updateclothingshop&quot;&gt;&gt;
 	&lt;&lt;run new Wikifier(null, &#39;&lt;&lt;replace &quot;#clothingShop-div&quot;&gt;&gt;&lt;&lt;&#39; + $shopName + &quot;Shop-main&gt;&gt;&lt;&lt;/replace&gt;&gt;&quot;)&gt;&gt;
 	&lt;&lt;numberify &#39;#clothingShop-div&#39;&gt;&gt;
 &lt;&lt;/widget&gt;&gt;
@@ -781134,7 +781266,8 @@ You find a high-quality notebook available that you could use to collect info on
 	&lt;&lt;crimeUp _crime &quot;thievery&quot;&gt;&gt;
 &lt;&lt;/if&gt;&gt;
 &lt;br&gt;&lt;br&gt;
-&lt;&lt;link [[Next|Shopping Centre Top]]&gt;&gt;&lt;&lt;set $tryOn.autoReset to true&gt;&gt;&lt;&lt;endevent&gt;&gt;&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="10633" name="Clothing Shop Guard" tags="" position="350,132975" size="100,100">&lt;&lt;effects&gt;&gt;
+&lt;&lt;link [[Next|Shopping Centre Top]]&gt;&gt;&lt;&lt;set $tryOn.autoReset to true&gt;&gt;&lt;&lt;endevent&gt;&gt;&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="10633" name="Clothing Shop Guard" tags="" position="350,132975" size="100,100">&lt;&lt;plusDiaperShop &quot;clothing&quot;&gt;&gt;
+&lt;&lt;effects&gt;&gt;
 &lt;&lt;generateSecurity 1&gt;&gt;&lt;&lt;person1&gt;&gt;
 A security guard watches the entrance and spots you. &lt;&lt;He&gt;&gt; says a few words to someone you can&#39;t see, then approaches you.
 &lt;br&gt;&lt;br&gt;
@@ -826282,7 +826415,9 @@ There&#39;s &lt;&lt;printmoney $tip&gt;&gt;.
 	&lt;&lt;link [[Take it|Strip Club]]&gt;&gt;&lt;&lt;money $tip &quot;thievery&quot;&gt;&gt;&lt;&lt;crimeUp `$tip / 100` &quot;thievery&quot;&gt;&gt;&lt;&lt;/link&gt;&gt;&lt;&lt;crime &quot;thievery&quot;&gt;&gt;
 	&lt;br&gt;
 	&lt;&lt;link [[Leave it|Strip Club]]&gt;&gt;&lt;&lt;/link&gt;&gt;
-&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="11825" name="Clothing Shop Register" tags="" position="600,147850" size="100,100">&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;set $lock to 200&gt;&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="11825" name="Clothing Shop Register" tags="" position="600,147850" size="100,100">&lt;&lt;plusDiaperShop &quot;clothing&quot;&gt;&gt;
+
+&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;set $lock to 200&gt;&gt;
 A standard cash register sits on a counter. It&#39;s locked tight.
 &lt;br&gt;&lt;br&gt;
 &lt;&lt;if currentSkillValue(&#39;skulduggery&#39;) gte $lock&gt;&gt;
