@@ -107659,7 +107659,45 @@ function initTendingConfig() {
 	};
 }
 window.initTendingConfig = initTendingConfig;
-/* twine-user-script #188: "game/ModLI/Poppy/system.js" */
+/* twine-user-script #188: "game/ModLI/Danny/schedule.js" */
+/* Danny location schedule.
+ * Weekday: room 7-8, school 8-15, courtyard 15:00-15:20, work 15:20-20, room 20-21, sleep 21-7
+ * Weekend: room 7-9, work 9-16, room 16-21, sleep 21-7
+ *
+ * Location is time-based even before the player has met Danny.
+ * The bedroom door is the meeting path, so gating on init hid every timetable note
+ * and threw if C.npc was not ready yet.
+ */
+function getDannyLocation() {
+	if (typeof Time === "undefined" || Time == null || typeof Time.hour !== "number") return "unknown";
+	const h = Time.hour;
+	const m = typeof Time.minute === "number" ? Time.minute : 0;
+	const school = !!Time.schoolDay;
+
+	if (h < 7 || h >= 21) return "sleep";
+
+	if (school) {
+		if (h === 7 && m < 30) return "room"; // wake, possible bedwet
+		if (h === 7 && m >= 30) return "room";
+		if (h === 8 && m < 45) return "walk"; // walking to school / library
+		if (h === 8 && m >= 45) return "school";
+		if (h >= 9 && h < 12) return "school";
+		if (h === 12) return "canteen";
+		if (h > 12 && h < 15) return "school";
+		if (h === 15 && m < 20) return "courtyard";
+		if (h === 15 && m >= 20) return "work";
+		if (h > 15 && h < 20) return "work";
+		if (h >= 20 && h < 21) return "room";
+	} else {
+		// Weekend
+		if (h >= 7 && h < 9) return "room";
+		if (h >= 9 && h < 16) return "work";
+		if (h >= 16 && h < 21) return "room";
+	}
+	return "room";
+}
+window.getDannyLocation = getDannyLocation;
+/* twine-user-script #189: "game/ModLI/Poppy/system.js" */
 /* ==============================================================
  * POPPY CORE FUNCTIONS WERE MOVED HERE ON PURPOSE
  * ==============================================================
@@ -108411,7 +108449,7 @@ function poppyBadEndComfortDays(badEnd) {
 	return days < 1 ? 1 : days;
 }
 window.poppyBadEndComfortDays = poppyBadEndComfortDays;
-/* twine-user-script #189: "game/ModLI/modLI-setting.js" */
+/* twine-user-script #190: "game/ModLI/modLI-setting.js" */
 /*------------------ ModLI shared helpers -------------------*/
 
 window.ensureModLISettings = function ensureModLISettings() {
@@ -108501,7 +108539,7 @@ window.getActivatedModLIs = function getActivatedModLIs() {
 /* Register built-in mod-exclusive LIs here */
 registerModLI("Poppy");
 registerModLI("Danny");
-/* twine-user-script #190: "game/ModLI/plus-needs/needs.js" */
+/* twine-user-script #191: "game/ModLI/plus-needs/needs.js" */
 /* Game time in seconds. The game keeps it in Time.date.timeStamp; there is no $timeStamp story variable. */
 window.plusNowTs = function () {
 	try {
@@ -111366,7 +111404,7 @@ window.plusNowTs = function () {
 		delete f.msg;
 	};
 })();
-/* twine-user-script #191: "game/base-clothing/ClothesItem.js" */
+/* twine-user-script #192: "game/base-clothing/ClothesItem.js" */
 class ClothesItem {
 	/* Index of Clothing | REQUIRED | MUST BE UNIQUE TO SLOT | INT */
 	index;
@@ -111724,7 +111762,7 @@ class ClothesItem {
 }
 
 window.ClothesItem = ClothesItem;
-/* twine-user-script #192: "game/base-clothing/canvasmodel-img.js" */
+/* twine-user-script #193: "game/base-clothing/canvasmodel-img.js" */
 /* eslint-disable no-undef */
 /* eslint-disable eqeqeq */
 DefineMacro("modelprepare-player-body", function () {
@@ -112444,7 +112482,7 @@ DefineMacro("modelprepare-player-clothes", function () {
 		}
 	}
 });
-/* twine-user-script #193: "game/base-clothing/clothing-earrings.js" */
+/* twine-user-script #194: "game/base-clothing/clothing-earrings.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites.
 
@@ -114822,7 +114860,7 @@ function initEarrings() {
 	setup.clothes.earrings.push(...setup.moddedClothes.earrings);
 }
 window.initEarrings = initEarrings;
-/* twine-user-script #194: "game/base-clothing/clothing-face.js" */
+/* twine-user-script #195: "game/base-clothing/clothing-face.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites.
 
@@ -116525,7 +116563,7 @@ function initFace() {
 	setup.clothes.face.push(...setup.moddedClothes.face);
 }
 window.initFace = initFace;
-/* twine-user-script #195: "game/base-clothing/clothing-feet.js" */
+/* twine-user-script #196: "game/base-clothing/clothing-feet.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites.
 
@@ -119796,7 +119834,7 @@ function initFeet() {
 	setup.clothes.feet.push(...setup.moddedClothes.feet);
 }
 window.initFeet = initFeet;
-/* twine-user-script #196: "game/base-clothing/clothing-genitals.js" */
+/* twine-user-script #197: "game/base-clothing/clothing-genitals.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites. */
 function initGenitals() {
@@ -120350,7 +120388,7 @@ function initGenitals() {
 	setup.clothes.genitals.push(...setup.moddedClothes.genitals);
 }
 window.initGenitals = initGenitals;
-/* twine-user-script #197: "game/base-clothing/clothing-handheld.js" */
+/* twine-user-script #198: "game/base-clothing/clothing-handheld.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites. */
 function initHandheld() {
@@ -121754,7 +121792,7 @@ function initHandheld() {
 	setup.clothes.handheld.push(...setup.moddedClothes.handheld);
 }
 window.initHandheld = initHandheld;
-/* twine-user-script #198: "game/base-clothing/clothing-hands.js" */
+/* twine-user-script #199: "game/base-clothing/clothing-hands.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites.
 
@@ -124238,7 +124276,7 @@ function initHands() {
 	setup.clothes.hands.push(...setup.moddedClothes.hands);
 }
 window.initHands = initHands;
-/* twine-user-script #199: "game/base-clothing/clothing-head.js" */
+/* twine-user-script #200: "game/base-clothing/clothing-head.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites.
 
@@ -129019,7 +129057,7 @@ function initHead() {
 	setup.clothes.head.push(...setup.moddedClothes.head);
 }
 window.initHead = initHead;
-/* twine-user-script #200: "game/base-clothing/clothing-legs.js" */
+/* twine-user-script #201: "game/base-clothing/clothing-legs.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites.
 
@@ -131398,7 +131436,7 @@ function initLegs() {
 	setup.clothes.legs.push(...setup.moddedClothes.legs);
 }
 window.initLegs = initLegs;
-/* twine-user-script #201: "game/base-clothing/clothing-lower.js" */
+/* twine-user-script #202: "game/base-clothing/clothing-lower.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites.
 
@@ -143697,7 +143735,7 @@ function initLower() {
 	setup.clothes.lower.push(...setup.moddedClothes.lower);
 }
 window.initLower = initLower;
-/* twine-user-script #202: "game/base-clothing/clothing-neck.js" */
+/* twine-user-script #203: "game/base-clothing/clothing-neck.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites.
 
@@ -149125,7 +149163,7 @@ function initNeck() {
 	setup.clothes.neck.push(...setup.moddedClothes.neck);
 }
 window.initNeck = initNeck;
-/* twine-user-script #203: "game/base-clothing/clothing-over-head.js" */
+/* twine-user-script #204: "game/base-clothing/clothing-over-head.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites. */
 function initOverHead() {
@@ -149242,7 +149280,7 @@ function initOverHead() {
 	setup.clothes.over_head.push(...setup.moddedClothes.over_head);
 }
 window.initOverHead = initOverHead;
-/* twine-user-script #204: "game/base-clothing/clothing-over-lower.js" */
+/* twine-user-script #205: "game/base-clothing/clothing-over-lower.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites. */
 function initOverLower() {
@@ -149449,7 +149487,7 @@ function initOverLower() {
 	setup.clothes.over_lower.push(...setup.moddedClothes.over_lower);
 }
 window.initOverLower = initOverLower;
-/* twine-user-script #205: "game/base-clothing/clothing-over-upper.js" */
+/* twine-user-script #206: "game/base-clothing/clothing-over-upper.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites. */
 /* word - widget will output "a" if "a" and nothing if "n". eg - You are wearing <<a>> hat. You are wearing <<a>> shorts.
@@ -149688,7 +149726,7 @@ function initOverUpper() {
 	setup.clothes.over_upper.push(...setup.moddedClothes.over_upper);
 }
 window.initOverUpper = initOverUpper;
-/* twine-user-script #206: "game/base-clothing/clothing-props.js" */
+/* twine-user-script #207: "game/base-clothing/clothing-props.js" */
 // @ts-check
 /* globals PropSetup normaliseKey normaliseFileName */
 
@@ -150542,7 +150580,7 @@ function initProps() {
 	Object.assign(setup.props, setup.moddedProps);
 }
 window.initProps = initProps;
-/* twine-user-script #207: "game/base-clothing/clothing-rings.js" */
+/* twine-user-script #208: "game/base-clothing/clothing-rings.js" */
 // @ts-check
 /* For any item that has a colour-combat tag, set it to 0 if that item ever gets its own combat sprites.
 
@@ -161157,7 +161195,7 @@ function initRings() {
 	setup.clothes.rings.push(...setup.moddedClothes.rings);
 }
 window.initRings = initRings;
-/* twine-user-script #208: "game/base-clothing/clothing-special.js" */
+/* twine-user-script #209: "game/base-clothing/clothing-special.js" */
 // @ts-check
 // prettier-ignore
 
@@ -162291,7 +162329,7 @@ function updateSpecialClothesNames(object) {
 	return ConversionObject.convert(object);
 }
 window.updateSpecialClothesNames = updateSpecialClothesNames;
-/* twine-user-script #209: "game/base-clothing/clothing-under-lower.js" */
+/* twine-user-script #210: "game/base-clothing/clothing-under-lower.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites.
 
@@ -164949,7 +164987,7 @@ function initUnderLower() {
 	setup.clothes.under_lower.push(...setup.moddedClothes.under_lower);
 }
 window.initUnderLower = initUnderLower;
-/* twine-user-script #210: "game/base-clothing/clothing-under-upper.js" */
+/* twine-user-script #211: "game/base-clothing/clothing-under-upper.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites.
 
@@ -166921,7 +166959,7 @@ function initUnderUpper() {
 	setup.clothes.under_upper.push(...setup.moddedClothes.under_upper);
 }
 window.initUnderUpper = initUnderUpper;
-/* twine-user-script #211: "game/base-clothing/clothing-upper.js" */
+/* twine-user-script #212: "game/base-clothing/clothing-upper.js" */
 // @ts-check
 /* For any item that has a colour_combat tag, set it to 0 if that item ever gets its own combat sprites. */
 /* word - widget will output "a" if "a" and nothing if "n". eg - You are wearing <<a>> hat. You are wearing <<a>> shorts.
@@ -180275,7 +180313,7 @@ function initUpper() {
 	setup.clothes.upper.push(...setup.moddedClothes.upper);
 }
 window.initUpper = initUpper;
-/* twine-user-script #212: "game/base-clothing/init.js" */
+/* twine-user-script #213: "game/base-clothing/init.js" */
 /* global initOverUpper, initOverLower, initUpper, initLower, initUnderUpper, initUnderLower, initGenitals, initOverHead, initHead, initFace, initNeck, initHands, initHandheld, initLegs, initFeet, initSpecialClothes, initProps, wardrobesUpdate, clothesDataTrimmerLoop, npcAssignClothesToSet */
 
 function clothingDataInit() {
@@ -180998,7 +181036,7 @@ function initNpcClothes() {
 		{ name: "femaleDefault",		type: "default", gender: "f", outfit: 0, clothes: npcAssignClothesToSet("shirt", "skirt"), desc: "shirt and skirt" },
 	];
 }
-/* twine-user-script #213: "game/base-clothing/special-clothing.js" */
+/* twine-user-script #214: "game/base-clothing/special-clothing.js" */
 // eslint-disable-next-line no-unused-vars
 function lustfulUpdate() {
 	// if no progress is made - nothing to update
@@ -181058,7 +181096,7 @@ function lustfulUpdate() {
 		effectsRef.message = 2;
 	}
 }
-/* twine-user-script #214: "game/base-clothing/update-clothes.js" */
+/* twine-user-script #215: "game/base-clothing/update-clothes.js" */
 /**
  * Used for making clothes colour customisable.
  * Structured in such a way that primary and accessory colours
@@ -181898,7 +181936,7 @@ function wardrobesUpdate() {
 	}
 }
 DefineMacro("wardrobesUpdate", wardrobesUpdate);
-/* twine-user-script #215: "game/base-combat/actionsGeneration.js" */
+/* twine-user-script #216: "game/base-combat/actionsGeneration.js" */
 /* actionsGeneration macro conversion */
 /* global DefaultActions combatButtonAdjustments */
 
@@ -181979,7 +182017,7 @@ Macro.add("assignCombatDefaults", {
 		}
 	},
 });
-/* twine-user-script #216: "game/base-combat/combat.js" */
+/* twine-user-script #217: "game/base-combat/combat.js" */
 // @ts-nocheck
 
 /**
@@ -182106,7 +182144,7 @@ function namedNpcReaction(index, event, detail) {
 
 window.namedNpcReaction = namedNpcReaction;
 DefineMacroS("namedNpcReaction", namedNpcReaction);
-/* twine-user-script #217: "game/base-combat/struggle.js" */
+/* twine-user-script #218: "game/base-combat/struggle.js" */
 function struggleSoftlockPrevent() {
 	if (V.cheatClothes && pcAreArmsBound("any")) {
 		Object.keys(V.struggle.enemy).forEach(enemy => {
@@ -182127,7 +182165,7 @@ Macro.add("struggle_softlock_prevent", {
 		this.output.append(fragment);
 	},
 });
-/* twine-user-script #218: "game/base-system/effect.js" */
+/* twine-user-script #219: "game/base-system/effect.js" */
 function effectsWater(waterType = "liquid") {
 	const fragment = document.createDocumentFragment();
 
@@ -184110,7 +184148,7 @@ Macro.add("effects", {
 		Weather.Thermometer.load();
 	},
 });
-/* twine-user-script #219: "game/base-system/images.js" */
+/* twine-user-script #220: "game/base-system/images.js" */
 function gainSchoolStar(variable) {
 	if (V.settings.blindStatsEnabled) return document.createDocumentFragment();
 	const createElement = (type, clas, content) => {
@@ -184175,7 +184213,7 @@ function schoolStar(variable) {
 	return fragment;
 }
 window.schoolStar = schoolStar;
-/* twine-user-script #220: "game/base-system/questmarkers.js" */
+/* twine-user-script #221: "game/base-system/questmarkers.js" */
 const events = [
 	{
 		// event name for debugging and logging failures
@@ -184473,7 +184511,7 @@ Macro.add("questmarker", {
 		*/
 	},
 });
-/* twine-user-script #221: "game/base-system/stat-changes.js" */
+/* twine-user-script #222: "game/base-system/stat-changes.js" */
 /* global statDisplay */
 
 const statChange = (() => {
@@ -186119,7 +186157,7 @@ const statChange = (() => {
 	};
 })();
 window.statChange = statChange;
-/* twine-user-script #222: "game/base-system/text.js" */
+/* twine-user-script #223: "game/base-system/text.js" */
 /* eslint-disable no-undef */
 const statDisplay = {
 	statChange(statType, amount, textClasses, condition = () => true) {
@@ -187101,7 +187139,7 @@ statDisplay.create("lllpatience", status => {
 		return statDisplay.statChange("Anger", 3, "red");
 	}
 });
-/* twine-user-script #223: "game/base-system/tools/dynamic-rendering.js" */
+/* twine-user-script #224: "game/base-system/tools/dynamic-rendering.js" */
 window.Dynamic = window.Dynamic || {};
 
 /**
@@ -187400,7 +187438,7 @@ Dynamic.createBoundHandler = (sourceHandler, ...valuesToInject) => {
 		throw e;
 	}
 };
-/* twine-user-script #224: "game/base-system/widgets.js" */
+/* twine-user-script #225: "game/base-system/widgets.js" */
 /* eslint-disable no-new */
 /* eslint-disable jsdoc/require-description-complete-sentence */
 function setfemininitymultiplierfromgender(gender) {
@@ -188324,7 +188362,7 @@ function wetAll(amount = 200) {
 	wetLower(amount);
 }
 DefineMacro("wetAll", wetAll);
-/* twine-user-script #225: "game/overworld-forest/loc-forestshop/gwylan-functions.js" */
+/* twine-user-script #226: "game/overworld-forest/loc-forestshop/gwylan-functions.js" */
 /* global numberOfFishCaught */
 
 /**
@@ -189402,7 +189440,7 @@ function gwylanForestRescueRange() {
 	return 25;
 }
 window.gwylanForestRescueRange = gwylanForestRescueRange;
-/* twine-user-script #226: "game/overworld-forest/loc-forestshop/shop-hunt-functions.js" */
+/* twine-user-script #227: "game/overworld-forest/loc-forestshop/shop-hunt-functions.js" */
 /**
  * Returns an array of coordinates of the specified location
  *
@@ -190124,7 +190162,7 @@ function shopHuntActorColor(actor, flip = false) {
 	return colors[index];
 }
 window.shopHuntActorColor = shopHuntActorColor;
-/* twine-user-script #227: "game/overworld-town/bike/bike.js" */
+/* twine-user-script #228: "game/overworld-town/bike/bike.js" */
 function bikeTime(destinationRegion) {
 	// Frost calculated aprox time for the distance based on how long it takes pc to walk to these locations
 	const townToTown = 1;
@@ -190552,7 +190590,7 @@ function bikeSecurity() {
 	}
 }
 window.bikeSecurity = bikeSecurity;
-/* twine-user-script #228: "game/overworld-town/loc-museum/paintings.js" */
+/* twine-user-script #229: "game/overworld-town/loc-museum/paintings.js" */
 function hcItemSetup() {
 	if (V.hcItems) {
 		V.hcItems = V.hcItems.filter(toKeep => toKeep.persists);
@@ -190897,7 +190935,7 @@ function hcChallengeColor(challenge) {
 	return colors[sets.indexOf(set)];
 }
 window.hcChallengeColor = hcChallengeColor;
-/* twine-user-script #229: "game/overworld-town/loc-school/library-functions.js" */
+/* twine-user-script #230: "game/overworld-town/loc-school/library-functions.js" */
 /**
  * Determine Kylar's location,
  * when Kylar has a centralised scheduling system, we could avoid logic specific to Kylar in the library-functions file.
@@ -190922,7 +190960,7 @@ function getKylarLibraryState() {
 	return "elsewhere";
 }
 window.getKylarLibraryState = getKylarLibraryState;
-/* twine-user-script #230: "game/overworld-town/special-avery/avery-functions.js" */
+/* twine-user-script #231: "game/overworld-town/special-avery/avery-functions.js" */
 /**
  * Evaluates if Avery is in a state of hunt or not
  *
@@ -190932,7 +190970,7 @@ function isAveryHuntingPlayer() {
 	return !!V.avery_mansion?.chase?.active;
 }
 window.isAveryHuntingPlayer = isAveryHuntingPlayer;
-/* twine-user-script #231: "game/overworld-town/special-kylar/kylar-functions.js" */
+/* twine-user-script #232: "game/overworld-town/special-kylar/kylar-functions.js" */
 // @ts-check
 
 /**
@@ -191114,7 +191152,7 @@ function rollKylarLibraryStalkFlag() {
 	return result;
 }
 window.rollKylarLibraryStalkFlag = rollKylarLibraryStalkFlag;
-/* twine-user-script #232: "game/overworld-town/special-sydney/sydney-functions.js" */
+/* twine-user-script #233: "game/overworld-town/special-sydney/sydney-functions.js" */
 // @ts-check
 
 /**
@@ -191130,7 +191168,7 @@ function getSydneyLoveNorm() {
 	return normalise(value, max);
 }
 window.getSydneyLoveNorm = getSydneyLoveNorm;
-/* twine-user-script #233: "game/special-fishing/fish-config.js" */
+/* twine-user-script #234: "game/special-fishing/fish-config.js" */
 function initFishingFishConfig() {
 	setup.fishing = { lootTables: {} };
 	setup.fishing.lootTables.fish = {
@@ -191453,7 +191491,7 @@ function initFishingFishConfig() {
 	};
 }
 window.initFishingFishConfig = initFishingFishConfig;
-/* twine-user-script #234: "game/special-fishing/fishing-minigame.js" */
+/* twine-user-script #235: "game/special-fishing/fishing-minigame.js" */
 /*
  * The default state machine can be found in fishingMinigameBehaviorDefaults, and is by itself a working behavior, albeit with the most simple possible combat behavior.
  *
@@ -192437,7 +192475,7 @@ function fishingMinigameBlockCount() {
 	return Math.clamp(Math.floor(window.innerWidth / 64) - 2, 1, 10);
 }
 window.fishingMinigameBlockCount = fishingMinigameBlockCount;
-/* twine-user-script #235: "game/special-fishing/fishing.js" */
+/* twine-user-script #236: "game/special-fishing/fishing.js" */
 /* global wardrobeContainsItem */
 /* global generateClothingItem */
 /**
@@ -193170,7 +193208,7 @@ function fishingLocationDisplayName(bus) {
 	}
 }
 window.fishingLocationDisplayName = fishingLocationDisplayName;
-/* twine-user-script #236: "game/special-masturbation/actions.js" */
+/* twine-user-script #237: "game/special-masturbation/actions.js" */
 /*
 	Old version can be found at https://gitgud.io/Vrelnir/degrees-of-lewdity/-/blob/master/game/special-masturbation/actions.twee?ref_type=0c2b0126
 */
@@ -194444,7 +194482,7 @@ Macro.add("masturbationactions", {
 		this.output.append(fragment);
 	},
 });
-/* twine-user-script #237: "game/special-masturbation/audience.js" */
+/* twine-user-script #238: "game/special-masturbation/audience.js" */
 // eslint-disable-next-line no-unused-vars
 function masturbationAudience() {
 	const br = () => document.createElement("br");
@@ -194993,7 +195031,7 @@ function masturbationAudienceLineText(npc, lineType = "") {
 			}
 	}
 }
-/* twine-user-script #238: "game/special-masturbation/effects.js" */
+/* twine-user-script #239: "game/special-masturbation/effects.js" */
 /*
 	Old version can be found at https://gitgud.io/Vrelnir/degrees-of-lewdity/-/blob/master/game/special-masturbation/effects.twee?ref_type=7f47147b
 */
@@ -198895,7 +198933,7 @@ Macro.add("masturbationeffects", {
 		this.output.append(fragment);
 	},
 });
-/* twine-user-script #239: "game/special-masturbation/macros-masturbation.js" */
+/* twine-user-script #240: "game/special-masturbation/macros-masturbation.js" */
 function getToyName(index, capitalise = false) {
 	const toy = T.playerToys[index];
 	if (toy == null) {
@@ -199034,7 +199072,7 @@ DefineMacro("masturbationAudienceIncrement", masturbationAudienceIncrement);
 function masturbationAudienceSkip(type) {
 	if (masturbationAudienceCalc()) masturbationAudienceIncrement(type);
 }
-/* twine-user-script #240: "game/special-masturbation/slime-control.js" */
+/* twine-user-script #241: "game/special-masturbation/slime-control.js" */
 /*
 	Old version can be found at https://gitgud.io/Vrelnir/degrees-of-lewdity/-/blob/master/game/special-masturbation/slimeControl.twee?ref_type=a2cb7190
 */
@@ -217696,10 +217734,14 @@ as what&#39;s needed by the imagepack? */
     &lt;&lt;elseif $godClothes is 1&gt;&gt;
         &lt;&lt;set $godClothes to 1&gt;&gt;
     &lt;&lt;/if&gt;&gt;
-&lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="29" name="Danny Room Door" tags="" position="1100,350" size="100,100">&lt;&lt;if $time gte 1260 or $time lt 420&gt;&gt;
+&lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="29" name="Danny Room Door" tags="" position="1100,350" size="100,100">&lt;&lt;set _loc to getDannyLocation()&gt;&gt;
+&lt;&lt;if _loc is &quot;sleep&quot;&gt;&gt;
 A note on the door: &quot;Sleeping. Please don&#39;t wake me.&quot;
-&lt;&lt;link [[Wait until morning|Danny Room Door]]&gt;&gt;&lt;&lt;passTimeUntil 7&gt;&gt;&lt;&lt;/link&gt;&gt;
-&lt;&lt;elseif $schoolDay and $time gte 480 and $time lt 900&gt;&gt;
+&lt;&lt;link [[Leave|Bedroom]]&gt;&gt;&lt;&lt;/link&gt;&gt;
+&lt;&lt;elseif _loc is &quot;work&quot;&gt;&gt;
+A note: &quot;At Niki&#39;s photography. Back later.&quot;
+&lt;&lt;link [[Leave|Bedroom]]&gt;&gt;&lt;&lt;/link&gt;&gt;
+&lt;&lt;elseif _loc is &quot;school&quot; or _loc is &quot;walk&quot; or _loc is &quot;canteen&quot; or _loc is &quot;courtyard&quot;&gt;&gt;
 A note: &quot;At school. Back later.&quot;
 &lt;&lt;link [[Leave|Bedroom]]&gt;&gt;&lt;&lt;/link&gt;&gt;
 &lt;&lt;else&gt;&gt;
@@ -217717,7 +217759,11 @@ A note: &quot;At school. Back later.&quot;
 &lt;&lt;link [[Leave|Bedroom]]&gt;&gt;&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="31" name="Danny First Meeting Canteen" tags="" position="100,475" size="100,100">In the canteen Danny nearly bumps into you.
 &quot;S-sorry! I&#39;m Danny. We both live at the orphanage, right?&quot;
 &lt;&lt;link [[Continue|Canteen]]&gt;&gt;&lt;&lt;set $dannyIntro to 1&gt;&gt;&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="32" name="Widgets Danny" tags="widget" position="225,475" size="100,100">&lt;&lt;widget &quot;dannyroom_link&quot;&gt;&gt;
-  &lt;&lt;bedroomicon&gt;&gt;&lt;&lt;link [[Danny&#39;s room (0:01)|Danny Room Door]]&gt;&gt;&lt;&lt;pass 1&gt;&gt;&lt;&lt;/link&gt;&gt;
+  &lt;&lt;if getDannyLocation() is &quot;sleep&quot;&gt;&gt;
+    &lt;&lt;bedroomicon&gt;&gt;&lt;&lt;link [[Danny&#39;s room (locked)|Danny Room Door]]&gt;&gt;&lt;&lt;pass 1&gt;&gt;&lt;&lt;/link&gt;&gt;
+  &lt;&lt;else&gt;&gt;
+    &lt;&lt;bedroomicon&gt;&gt;&lt;&lt;link [[Danny&#39;s room (0:01)|Danny Room Door]]&gt;&gt;&lt;&lt;pass 1&gt;&gt;&lt;&lt;/link&gt;&gt;
+  &lt;&lt;/if&gt;&gt;
   &lt;br&gt;
 &lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="33" name="Widgets Danny Init" tags="widget" position="350,475" size="100,100">&lt;&lt;widget &quot;dannyInit&quot;&gt;&gt;
 	&lt;&lt;if C.npc.Danny&gt;&gt;
