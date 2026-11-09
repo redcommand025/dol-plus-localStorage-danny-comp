@@ -107665,36 +107665,34 @@ window.initTendingConfig = initTendingConfig;
  * Weekend: room 7-9, work 9-16, room 16-21, sleep 21-7
  *
  * Location is time-based even before the player has met Danny.
- * The bedroom door is the meeting path, so gating on init hid every timetable note
- * and threw if C.npc was not ready yet.
  */
 function getDannyLocation() {
-	if (typeof Time === "undefined" || Time == null || typeof Time.hour !== "number") return "unknown";
-	const h = Time.hour;
-	const m = typeof Time.minute === "number" ? Time.minute : 0;
-	const school = !!Time.schoolDay;
-
-	if (h < 7 || h >= 21) return "sleep";
-
-	if (school) {
-		if (h === 7 && m < 30) return "room"; // wake, possible bedwet
-		if (h === 7 && m >= 30) return "room";
-		if (h === 8 && m < 45) return "walk"; // walking to school / library
-		if (h === 8 && m >= 45) return "school";
-		if (h >= 9 && h < 12) return "school";
-		if (h === 12) return "canteen";
-		if (h > 12 && h < 15) return "school";
-		if (h === 15 && m < 20) return "courtyard";
-		if (h === 15 && m >= 20) return "work";
-		if (h > 15 && h < 20) return "work";
-		if (h >= 20 && h < 21) return "room";
-	} else {
-		// Weekend
-		if (h >= 7 && h < 9) return "room";
-		if (h >= 9 && h < 16) return "work";
-		if (h >= 16 && h < 21) return "room";
+	try {
+		if (typeof Time === "undefined" || Time == null || typeof Time.hour !== "number") return "unknown";
+		const h = Time.hour;
+		const m = typeof Time.minute === "number" ? Time.minute : 0;
+		const school = !!Time.schoolDay;
+		if (h < 7 || h >= 21) return "sleep";
+		if (school) {
+			if (h === 7) return "room";
+			if (h === 8 && m < 45) return "walk";
+			if (h === 8 && m >= 45) return "school";
+			if (h >= 9 && h < 12) return "school";
+			if (h === 12) return "canteen";
+			if (h > 12 && h < 15) return "school";
+			if (h === 15 && m < 20) return "courtyard";
+			if (h === 15 && m >= 20) return "work";
+			if (h > 15 && h < 20) return "work";
+			if (h >= 20 && h < 21) return "room";
+		} else {
+			if (h >= 7 && h < 9) return "room";
+			if (h >= 9 && h < 16) return "work";
+			if (h >= 16 && h < 21) return "room";
+		}
+		return "room";
+	} catch (e) {
+		return "unknown";
 	}
-	return "room";
 }
 window.getDannyLocation = getDannyLocation;
 /* twine-user-script #189: "game/ModLI/Poppy/system.js" */
@@ -217765,6 +217763,13 @@ A note: &quot;At school. Back later.&quot;
     &lt;&lt;bedroomicon&gt;&gt;&lt;&lt;link [[Danny&#39;s room (0:01)|Danny Room Door]]&gt;&gt;&lt;&lt;pass 1&gt;&gt;&lt;&lt;/link&gt;&gt;
   &lt;&lt;/if&gt;&gt;
   &lt;br&gt;
+&lt;&lt;/widget&gt;&gt;
+
+&lt;&lt;widget &quot;dannyPresence&quot;&gt;&gt;
+	&lt;&lt;if getDannyLocation() is _args[0]&gt;&gt;
+		You see Danny here.
+		&lt;br&gt;
+	&lt;&lt;/if&gt;&gt;
 &lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="33" name="Widgets Danny Init" tags="widget" position="350,475" size="100,100">&lt;&lt;widget &quot;dannyInit&quot;&gt;&gt;
 	&lt;&lt;if C.npc.Danny&gt;&gt;
 		&lt;&lt;if C.npc.Danny.continence is undefined&gt;&gt;
@@ -693136,6 +693141,7 @@ You step away from Niki, and prepare to hand out more flyers.
 
 &lt;&lt;endevent&gt;&gt;
 &lt;&lt;photo_high_options&gt;&gt;</tw-passagedata><tw-passagedata pid="8284" name="Photo Entrance" tags="" position="475,103600" size="100,100">&lt;&lt;effects&gt;&gt;&lt;&lt;set $location to &quot;studio&quot;&gt;&gt;
+&lt;&lt;dannyPresence &quot;work&quot;&gt;&gt;
 
 You approach the photography studio, a tall old building opposite the hospital. There&#39;s a short flight of steps leading up to the door. &quot;Niki&#39;s photo studio. Models wanted.&quot;
 &lt;br&gt;&lt;br&gt;
@@ -693224,6 +693230,7 @@ Niki nods. &quot;You know where I am if you change your mind.&quot;
 
 &lt;&lt;link [[Next|Nightingale Street]]&gt;&gt;&lt;&lt;endevent&gt;&gt;&lt;&lt;/link&gt;&gt;
 &lt;br&gt;</tw-passagedata><tw-passagedata pid="8289" name="Photo" tags="" position="1100,103600" size="100,100">&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;studio&quot;&gt;&gt;&lt;&lt;effects&gt;&gt;
+&lt;&lt;dannyPresence &quot;work&quot;&gt;&gt;
 
 &lt;&lt;if $photo.niki_event is undefined and C.npc.Niki.love gte 10 and $brothelintro gte 1&gt;&gt;
 	&lt;&lt;set $photo.niki_event to 1&gt;&gt;
@@ -725303,7 +725310,8 @@ You swallow the pill. A daze descends on you and a perverse warmth grows in your
 
 &lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="9397" name="Canteen" tags="" position="850,117475" size="100,100">&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;school&quot;&gt;&gt;&lt;&lt;schooleffects&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;sydneySchedule&gt;&gt;
 You are in the school canteen.
-&lt;&lt;if $dannyIntro isnot 1 and Time.schoolDay&gt;&gt;
+&lt;&lt;dannyPresence &quot;canteen&quot;&gt;&gt;
+&lt;&lt;if $dannyIntro isnot 1 and Time.schoolDay and getDannyLocation() is &quot;canteen&quot;&gt;&gt;
 	&lt;&lt;link [[Meet Danny|Danny First Meeting Canteen]]&gt;&gt;&lt;&lt;/link&gt;&gt;
 	&lt;br&gt;
 &lt;&lt;/if&gt;&gt;
@@ -745935,6 +745943,7 @@ You shake &lt;&lt;his&gt;&gt; hand away. &quot;Money,&quot; you demand. &lt;&lt;
 	&lt;&lt;link [[Next|Hallways]]&gt;&gt;&lt;&lt;set $eventskip to 1&gt;&gt;&lt;&lt;/link&gt;&gt;
 	&lt;br&gt;
 &lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="9947" name="Hallways" tags="" position="850,124350" size="100,100">&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;school&quot;&gt;&gt;&lt;&lt;schooleffects&gt;&gt;&lt;&lt;effects&gt;&gt;
+&lt;&lt;dannyPresence &quot;school&quot;&gt;&gt;
 
 &lt;&lt;if ![&quot;early&quot;, &quot;late&quot;, &quot;earlynoschool&quot;, &quot;latenoschool&quot;, &quot;daynoschool&quot;].includes($schoolstate)&gt;&gt;
 	You are in the school hallways.
@@ -753925,6 +753934,7 @@ You find a small pin in the locker, and use the tip to poke a tiny hole in the c
 	&lt;&lt;/if&gt;&gt;
 &lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="10134" name="School Front Courtyard" tags="" position="475,126725" size="100,100">&lt;&lt;lockerClothesAutoStore&gt;&gt;
 &lt;&lt;set $outside to 1&gt;&gt;&lt;&lt;set $location to &quot;school&quot;&gt;&gt;&lt;&lt;schooleffects&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;set $bus to &quot;schoolfrontcourtyard&quot;&gt;&gt;
+&lt;&lt;dannyPresence &quot;courtyard&quot;&gt;&gt;
 
 &lt;&lt;if ![&quot;early&quot;, &quot;late&quot;, &quot;earlynoschool&quot;, &quot;latenoschool&quot;, &quot;daynoschool&quot;].includes($schoolstate)&gt;&gt;
 	&lt;&lt;if $schoolstate is &quot;morning&quot;&gt;&gt;
