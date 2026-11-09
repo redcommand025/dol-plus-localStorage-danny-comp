@@ -92250,6 +92250,10 @@ Renderer.CanvasModels.main = {
 					return key;
 				};
 
+				// No legitimate Danny NNPC portrait assets exist in img/ui/nnpc.
+				// Do not invent artwork or reuse another named NPC's portrait folder; use the generic blank.
+				const dannyPortraitFallback = () => "img/ui/nnpc/blank.png";
+
 				const autoEnabled = V.options?.autoNNPCDisplay?.enabled === true;
 				const inOptions = !!T.optionsEnabled;
 
@@ -92263,6 +92267,7 @@ Renderer.CanvasModels.main = {
 					if (!active) return;
 
 					T.activeNNPC = active;
+					if (active === "danny") return dannyPortraitFallback();
 
 					const isBeast = (active === "black_wolf" || active === "great_hawk");
 
@@ -92335,6 +92340,7 @@ Renderer.CanvasModels.main = {
 					if (!active) return;
 
 					T.activeNNPC = active;
+					if (active === "danny") return dannyPortraitFallback();
 
 					const isBeast = (active === "black_wolf" || active === "great_hawk");
 
@@ -92430,6 +92436,7 @@ Renderer.CanvasModels.main = {
 				if (active === "ivory_wraith") active = "ivory_wraith";
 
 				T.activeNNPC = active;
+				if (active === "danny") return dannyPortraitFallback();
 
 				const isBeast = (active === "black_wolf" || active === "great_hawk");
 
@@ -110439,6 +110446,7 @@ window.plusNowTs = function () {
 		const V = State.variables;
 		if (!V || V.plusDiaperV2) return 0;
 		let n = 0;
+		let pending = 0;
 		const seen = new Set();
 		(function walk(o, depth) {
 			if (!o || typeof o !== "object" || seen.has(o) || depth > 8) return;
@@ -110447,12 +110455,16 @@ window.plusNowTs = function () {
 				if (migrate(o)) {
 					init(o);
 					n++;
+				} else {
+					pending++;
 				}
 				return;
 			}
 			for (const k of Object.keys(o)) walk(o[k], depth + 1);
 		})(V, 0);
-		V.plusDiaperV2 = 1;
+		// Only seal the save as v2 when every old name we saw could be rewritten.
+		// If the clothing catalog is not registered yet, leave plusDiaperV2 unset so a later hook can retry.
+		if (!pending) V.plusDiaperV2 = 1;
 		return n;
 	};
 	$(document).on(":passagestart", () => {
@@ -203570,7 +203582,7 @@ alt_head_type: Type of headwear that alt style is used for*/
 	&lt;!-- Type needs to conform to beast type: wolf, dog, etc. --&gt;
 	&lt;&lt;set _tpe to [&quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;wolf&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;hawk&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;, &quot;creature&quot;, &quot;human&quot;, &quot;human&quot;, &quot;human&quot;]&gt;&gt;
 
-	&lt;&lt;set _swi to [&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;, &quot;a&quot;, &quot;t&quot;]&gt;&gt;
+	&lt;&lt;set _swi to [&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;t&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;,&quot;a&quot;, &quot;a&quot;, &quot;a&quot;]&gt;&gt;
 
 	&lt;&lt;for _i to 0; _i lt $NPCName.length; _i++&gt;&gt;
 
@@ -203680,7 +203692,8 @@ alt_head_type: Type of headwear that alt style is used for*/
 			&quot;ivorywraith&quot;: {nam : &quot;Ivory Wraith&quot;, title: &quot;reflection&quot;, insecurity: &quot;looks&quot;, adult: 1},
 			&quot;zephyr&quot;: {nam : &quot;Zephyr&quot;, title: &quot;captain&quot;, insecurity: &quot;skill&quot;, adult: 1},
 			&quot;nightmonster&quot;: {nam : &quot;Night Monster&quot;, title: &quot;horror&quot;, insecurity: &quot;weak&quot;, adult: 1, type: &quot;creature&quot;, claws: &quot;claws&quot;},
-			&quot;poppy&quot;: {nam : &quot;Poppy&quot;, title: &quot;tolerant&quot;, insecurity: &quot;skill&quot;, adult: 1}
+			&quot;poppy&quot;: {nam : &quot;Poppy&quot;, title: &quot;tolerant&quot;, insecurity: &quot;skill&quot;, adult: 1},
+			&quot;danny&quot;: {nam : &quot;Danny&quot;, title: &quot;dependent&quot;, insecurity: &quot;weak&quot;, adult: 1, teen: 0}
 		}&gt;&gt;
 		&lt;&lt;for _npc range Object.keys(_newNNPCs)&gt;&gt;
 			&lt;&lt;if !$NPCNameList.includes(_newNNPCs[_npc].nam)&gt;&gt;
@@ -341430,7 +341443,7 @@ Zohar
 		if you&#39;re reading this, there&#39;s a decent chance that means you!
 		head over to game/base-system/widgets.twee and give this new NNPC relevant clamps before whitelisting them below.
 	--&gt;
-	&lt;&lt;set _validNNPCNames to [&quot;Avery&quot;,&quot;Bailey&quot;,&quot;Briar&quot;,&quot;Charlie&quot;,&quot;Darryl&quot;,&quot;Doren&quot;,&quot;Eden&quot;,&quot;Gwylan&quot;,&quot;Harper&quot;,&quot;Jordan&quot;,&quot;Kylar&quot;,&quot;Landry&quot;,&quot;Leighton&quot;,&quot;Mason&quot;,&quot;Morgan&quot;,&quot;River&quot;,&quot;Robin&quot;,&quot;Sam&quot;,&quot;Sirris&quot;,&quot;Whitney&quot;,&quot;Winter&quot;,&quot;Black Wolf&quot;,&quot;Niki&quot;,&quot;Quinn&quot;,&quot;Remy&quot;,&quot;Alex&quot;,&quot;Great Hawk&quot;,&quot;Wren&quot;,&quot;Sydney&quot;,&quot;Ivory Wraith&quot;,&quot;Zephyr&quot;,&quot;Poppy&quot;,&quot;Riley&quot;]&gt;&gt;
+	&lt;&lt;set _validNNPCNames to [&quot;Avery&quot;,&quot;Bailey&quot;,&quot;Briar&quot;,&quot;Charlie&quot;,&quot;Darryl&quot;,&quot;Doren&quot;,&quot;Eden&quot;,&quot;Gwylan&quot;,&quot;Harper&quot;,&quot;Jordan&quot;,&quot;Kylar&quot;,&quot;Landry&quot;,&quot;Leighton&quot;,&quot;Mason&quot;,&quot;Morgan&quot;,&quot;River&quot;,&quot;Robin&quot;,&quot;Sam&quot;,&quot;Sirris&quot;,&quot;Whitney&quot;,&quot;Winter&quot;,&quot;Black Wolf&quot;,&quot;Niki&quot;,&quot;Quinn&quot;,&quot;Remy&quot;,&quot;Alex&quot;,&quot;Great Hawk&quot;,&quot;Wren&quot;,&quot;Sydney&quot;,&quot;Ivory Wraith&quot;,&quot;Zephyr&quot;,&quot;Poppy&quot;,&quot;Riley&quot;,&quot;Danny&quot;]&gt;&gt;
 	&lt;&lt;if !_validNNPCNames.includes(_nam)&gt;&gt;
 		&lt;&lt;error { message: &quot;NNPC &#39;&quot; + _nam + &quot;&#39; is not whitelisted for use with &lt;&lt;npcincr&gt;&gt;&quot;}&gt;&gt;
 	&lt;&lt;/if&gt;&gt;
@@ -392655,6 +392668,13 @@ You wake up inside the cave&lt;&lt;if Object.keys(V.carried).filter(s =&gt; V.ca
 	&lt;&lt;set $NPCName[_i].love = Math.clamp($NPCName[_i].love, -50, 50)&gt;&gt;
 	&lt;&lt;set $NPCName[_i].dom = Math.clamp($NPCName[_i].dom, -50, 50)&gt;&gt;
 	&lt;&lt;set $NPCName[_i].trust to Math.clamp($NPCName[_i].trust,- 100, 300)&gt;&gt;
+
+	&lt;&lt;set _i to $NPCNameList.indexOf(&quot;Danny&quot;)&gt;&gt;
+	&lt;&lt;if _i gte 0&gt;&gt;
+		&lt;&lt;set $NPCName[_i].love = Math.clamp($NPCName[_i].love, 0, 100)&gt;&gt;
+		&lt;&lt;set $NPCName[_i].dom = Math.clamp($NPCName[_i].dom, -50, 50)&gt;&gt;
+		&lt;&lt;set $NPCName[_i].trust to Math.clamp($NPCName[_i].trust,- 100, 300)&gt;&gt;
+	&lt;&lt;/if&gt;&gt;
 &lt;&lt;/widget&gt;&gt;
 
 &lt;&lt;widget &quot;haircheck&quot;&gt;&gt;
