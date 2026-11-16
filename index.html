@@ -75976,15 +75976,23 @@ setup.Locations = {
 	hotel: () => {
 		return "town";
 	},
+	flat: () => "flats",
 	lake: () => (["fishingForestLake", "lakefishingrock"].includes(V.bus) ? "lake-rock" : "lake"),
 	estate: () => (V.bus === "estate_cottage" ? "estate_cottage" : "estate"),
 	farm: () => (["farmroad6", "farm"].includes(V.bus) ? "farm" : "underground_farm"),
 	get() {
-		if (typeof this[V.location] === "function") {
-			return this[V.location]();
+		const vars = (typeof SugarCube !== "undefined" && SugarCube.State && SugarCube.State.variables) || V;
+		const loc = vars && vars.location;
+		if (typeof this[loc] === "function") {
+			return this[loc]();
 		}
-		if (setup.LocationImages && Object.hasOwn(setup.LocationImages, V.location)) {
-			return V.location;
+		if (setup.LocationImages && Object.hasOwn(setup.LocationImages, loc)) {
+			return loc;
+		}
+		/* Bus streets and similar inherit a location_name (often "town") from setup.locations. */
+		const inherited = setup.locations && loc && setup.locations[loc] && setup.locations[loc].location_name;
+		if (inherited && setup.LocationImages && Object.hasOwn(setup.LocationImages, inherited)) {
+			return inherited;
 		}
 		return "home";
 	},
@@ -86287,10 +86295,15 @@ Weather.Renderer.Effects.add({
 Weather.Renderer.Effects.add({
 	name: "locationImageAnimation",
 	async init() {
+		/* Snapshot the config used for layers so async loads cannot pick up a later
+		 * Locations.get() change and combine town files with the home folder (or similar). */
+		const locationConfig = this.location;
+		const folder = locationConfig && locationConfig.folder ? locationConfig.folder : "";
+		const capturedPath = `${this.path}/` + (folder ? `${folder}/` : "");
 		const loadImage = async (key, obj) => {
 			// Make it asyncronous to wait for the image to load before animating without slowing down the main flow
 			return new Promise(resolve => {
-				const basePath = this.fullPath;
+				const basePath = capturedPath;
 				/* Keep the filename string. After a successful load this code used to
 				 * overwrite obj.image with the Image element, so a later init on a shared
 				 * object would build img/.../[object Object] and 404. */
@@ -86386,10 +86399,10 @@ Weather.Renderer.Effects.add({
 		};
 
 		this.animations = new Map();
-		if (this.location?.[this.key] === undefined) return;
+		if (locationConfig?.[this.key] === undefined) return;
 
 		// Need to create a deep copy in case of other effects using the same object
-		this.obj = this.location[this.key].deepCopy();
+		this.obj = locationConfig[this.key].deepCopy();
 
 		// Check if there are sub-animations
 		// In that case we want a separate animation for each of them
@@ -113387,6 +113400,63 @@ window.plusNowTs = function () {
  * we only splice a "Danny" entry (any official names after him would
  * shift, but none exist; only a custom NNPC appended after him would).
  *
+ * Also remaps or clears stored $NPCName indices ($npc / $npcnum / $npcrow)
+ * and a pillory tenant that still points at Danny, so widgets like
+ * <<personselect>> and <<endnpc>> do not read title/nam/trust of undefined.
+ *
+ * @param {object} [vars] SugarCube State.variables; defaults to the live save.
+ * @param removedIndex
+ */
+function plusSanitizeNamedNpcRefs(vars, removedIndex) {
+	const V = vars;
+	if (!V || typeof V !== "object") return;
+	if (!Array.isArray(V.npc)) V.npc = [];
+	if (!Array.isArray(V.npcnum)) V.npcnum = [];
+	if (!Array.isArray(V.npcrow)) V.npcrow = [];
+	const names = Array.isArray(V.NPCName) ? V.NPCName : [];
+	const len = names.length;
+	const dropName = n => n === "Danny" || (typeof n === "string" && /^danny$/i.test(n));
+	const n = Math.max(V.npc.length, V.npcnum.length, V.npcrow.length);
+	/* Drop Danny first, while $npcnum still uses pre-splice indices. */
+	for (let i = n - 1; i >= 0; i--) {
+		const name = V.npc[i];
+		const idx = V.npcnum[i];
+		if (dropName(name) || (typeof removedIndex === "number" && removedIndex >= 0 && idx === removedIndex)) {
+			V.npc.splice(i, 1);
+			V.npcnum.splice(i, 1);
+			V.npcrow.splice(i, 1);
+		}
+	}
+	if (typeof removedIndex === "number" && removedIndex >= 0) {
+		for (let i = 0; i < V.npcnum.length; i++) {
+			if (typeof V.npcnum[i] === "number" && V.npcnum[i] > removedIndex) V.npcnum[i] -= 1;
+		}
+	}
+	for (let i = V.npc.length - 1; i >= 0; i--) {
+		const idx = V.npcnum[i];
+		const entry = typeof idx === "number" ? names[idx] : null;
+		if (typeof idx === "number" && (idx < 0 || idx >= len || (entry && entry.nam === "Danny"))) {
+			V.npc.splice(i, 1);
+			V.npcnum.splice(i, 1);
+			V.npcrow.splice(i, 1);
+		}
+	}
+	const tenant = V.pillory && V.pillory.tenant;
+	if (tenant) {
+		const special = tenant.special && tenant.special.name;
+		const person = tenant.person || {};
+		const personName = person.fullDescription || person.nam || person.description;
+		if (special === "Danny" || personName === "Danny") {
+			tenant.exists = 0;
+			if (tenant.special) {
+				tenant.special.name = "";
+				tenant.special.desc = "";
+			}
+		}
+	}
+}
+
+/**
  * @param {object} [vars] SugarCube State.variables; defaults to the live save.
  */
 function plusRetireDanny(vars) {
@@ -113417,6 +113487,7 @@ function plusRetireDanny(vars) {
 	}
 
 	let removed = false;
+	let removedIndex = -1;
 	const list = V.NPCNameList;
 	const names = V.NPCName;
 	if (Array.isArray(list)) {
@@ -113428,6 +113499,7 @@ function plusRetireDanny(vars) {
 				list.splice(i, 1);
 				if (Array.isArray(names) && names.length > i) names.splice(i, 1);
 				removed = true;
+				removedIndex = i;
 			}
 		}
 	}
@@ -113441,10 +113513,14 @@ function plusRetireDanny(vars) {
 		}
 	}
 
+	plusSanitizeNamedNpcRefs(V, removedIndex);
 	return removed;
 }
 
-if (typeof window !== "undefined") window.plusRetireDanny = plusRetireDanny;
+if (typeof window !== "undefined") {
+	window.plusRetireDanny = plusRetireDanny;
+	window.plusSanitizeNamedNpcRefs = plusSanitizeNamedNpcRefs;
+}
 /* twine-user-script #198: "game/base-clothing/ClothesItem.js" */
 class ClothesItem {
 	/* Index of Clothing | REQUIRED | MUST BE UNIQUE TO SLOT | INT */
@@ -344437,7 +344513,16 @@ Should probably be removed once said feature has been implemented
 	&lt;&lt;if _args[0]&gt;&gt;
 		&lt;&lt;set _passargs to _args[0]&gt;&gt;
 		&lt;&lt;set _leindex to $npc.indexOf(_passargs)&gt;&gt;
-		&lt;&lt;set C.npc[_passargs].trust += (Math.sign($enemytrust) * (Math.trunc(Math.abs($enemytrust) / 100) + ((random(1, 100) &lt; Math.abs($enemytrust)) % 100 ? 1 : 0)))&gt;&gt;
+		&lt;&lt;if def C.npc[_passargs]&gt;&gt;
+			&lt;&lt;set C.npc[_passargs].trust += (Math.sign($enemytrust) * (Math.trunc(Math.abs($enemytrust) / 100) + ((random(1, 100) &lt; Math.abs($enemytrust)) % 100 ? 1 : 0)))&gt;&gt;
+		&lt;&lt;elseif _leindex gte 0&gt;&gt;
+			&lt;&lt;set $npc.splice(_leindex, 1)&gt;&gt;
+			&lt;&lt;if def $npcnum&gt;&gt;&lt;&lt;set $npcnum.splice(_leindex, 1)&gt;&gt;&lt;&lt;/if&gt;&gt;
+			&lt;&lt;if def $npcrow&gt;&gt;&lt;&lt;set $npcrow.splice(_leindex, 1)&gt;&gt;&lt;&lt;/if&gt;&gt;
+			&lt;&lt;exit&gt;&gt;
+		&lt;&lt;else&gt;&gt;
+			&lt;&lt;exit&gt;&gt;
+		&lt;&lt;/if&gt;&gt;
 		/* Increases or decreases NPC trust by 1 for every 100 $enemytrust. The remaining $enemytrust gives a % chance to increase or decrease 1 more. */
 		&lt;&lt;for _temp to 0; _temp lt $NPCList.length; _temp++&gt;&gt;
 			&lt;&lt;if $NPCList[_temp].fullDescription is _passargs&gt;&gt;
@@ -344509,7 +344594,9 @@ Should probably be removed once said feature has been implemented
 		&lt;!-- For each and every named NPC defined, we increase their trust. --&gt;
 		&lt;&lt;for _temp to 0; _temp lt $npc.length; _temp++&gt;&gt;
 			&lt;&lt;set _nam to clone($npc[_temp])&gt;&gt;
-			&lt;&lt;set C.npc[_nam].trust += (Math.sign($enemytrust) * (Math.trunc(Math.abs($enemytrust) / 100) + ((random(1, 100) &lt; Math.abs($enemytrust) % 100) ? 1 : 0)))&gt;&gt;
+			&lt;&lt;if def C.npc[_nam]&gt;&gt;
+				&lt;&lt;set C.npc[_nam].trust += (Math.sign($enemytrust) * (Math.trunc(Math.abs($enemytrust) / 100) + ((random(1, 100) &lt; Math.abs($enemytrust) % 100) ? 1 : 0)))&gt;&gt;
+			&lt;&lt;/if&gt;&gt;
 			/* Increases or decreases NPC trust by 1 for every 100 $enemytrust. The remaining $enemytrust gives a % chance to increase or decrease 1 more. */
 		&lt;&lt;/for&gt;&gt;
 		&lt;&lt;clearnpc&gt;&gt;
@@ -382493,11 +382580,18 @@ You obey the slime&#39;s demand.
 		&lt;&lt;set $npcadult to $NPCList[_n].adult&gt;&gt;
 		&lt;&lt;set $pronoun to $NPCList[_n].pronoun&gt;&gt;
 		&lt;&lt;if $npcrow.includes(_n)&gt;&gt;
-			&lt;&lt;set $description to $NPCName[$npcnum[$npcrow.indexOf(_n)]].title&gt;&gt;
-			&lt;&lt;set $role to &quot;normal&quot;&gt;&gt;
-			&lt;&lt;set $npc_named to 1&gt;&gt;
-			&lt;&lt;if $NPCName[$npcnum[$npcrow.indexOf(_n)]].nam is &quot;Ivory Wraith&quot;&gt;&gt;
-				&lt;&lt;set $description to &quot;pale figure&quot;&gt;&gt;
+			&lt;&lt;set _namedIdx to $npcnum[$npcrow.indexOf(_n)]&gt;&gt;
+			&lt;&lt;if def $NPCName[_namedIdx] and $NPCName[_namedIdx].nam&gt;&gt;
+				&lt;&lt;set $description to $NPCName[_namedIdx].title&gt;&gt;
+				&lt;&lt;set $role to &quot;normal&quot;&gt;&gt;
+				&lt;&lt;set $npc_named to 1&gt;&gt;
+				&lt;&lt;if $NPCName[_namedIdx].nam is &quot;Ivory Wraith&quot;&gt;&gt;
+					&lt;&lt;set $description to &quot;pale figure&quot;&gt;&gt;
+				&lt;&lt;/if&gt;&gt;
+			&lt;&lt;else&gt;&gt;
+				&lt;&lt;set $description to $NPCList[_n].description&gt;&gt;
+				&lt;&lt;set $role to $NPCList[_n].role&gt;&gt;
+				&lt;&lt;set $npc_named to 0&gt;&gt;
 			&lt;&lt;/if&gt;&gt;
 		&lt;&lt;else&gt;&gt;
 			&lt;&lt;set $description to $NPCList[_n].description&gt;&gt;
@@ -397547,6 +397641,22 @@ You wake up inside the cave&lt;&lt;if Object.keys(V.carried).filter(s =&gt; V.ca
 &lt;&lt;/widget&gt;&gt;
 
 &lt;&lt;widget &quot;get_pillory_npc&quot;&gt;&gt;
+	&lt;&lt;if !$pillory or !$pillory.tenant or !$pillory.tenant.person or !$pillory.tenant.person.pronoun&gt;&gt;
+		&lt;&lt;exit&gt;&gt;
+	&lt;&lt;/if&gt;&gt;
+	/* A leftover named-NPC slot (for example Danny after retirement) must not
+	 * ride along when this widget copies the tenant into $NPCList[0]. */
+	&lt;&lt;if $npcrow.includes(0)&gt;&gt;
+		&lt;&lt;set _pilloryNamed to $pillory.tenant.special.name&gt;&gt;
+		&lt;&lt;if !_pilloryNamed or ($NPCNameList and !$NPCNameList.includes(_pilloryNamed))&gt;&gt;
+			&lt;&lt;set _px to $npcrow.indexOf(0)&gt;&gt;
+			&lt;&lt;if _px gte 0&gt;&gt;
+				&lt;&lt;run $npc.splice(_px, 1)&gt;&gt;
+				&lt;&lt;run $npcnum.splice(_px, 1)&gt;&gt;
+				&lt;&lt;run $npcrow.splice(_px, 1)&gt;&gt;
+			&lt;&lt;/if&gt;&gt;
+		&lt;&lt;/if&gt;&gt;
+	&lt;&lt;/if&gt;&gt;
 	&lt;&lt;set $NPCList[0] to clone($pillory.tenant.person)&gt;&gt;&lt;&lt;person1&gt;&gt;
 &lt;&lt;/widget&gt;&gt;
 
