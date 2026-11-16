@@ -224934,6 +224934,14 @@ as what&#39;s needed by the imagepack? */
 &lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="29" name="Danny Room Door" tags="" position="1100,350" size="100,100">&lt;&lt;set _loc to getDannyLocation()&gt;&gt;
 &lt;&lt;if _loc is &quot;sleep&quot;&gt;&gt;
 A note on the door: &quot;Sleeping. Please don&#39;t wake me.&quot;
+&lt;&lt;if C.npc.Danny.love gte 40 and Time.isWeekEnd()&gt;&gt;
+  &lt;&lt;link [[Photo walk|Danny Love Photo Walk]]&gt;&gt;&lt;&lt;/link&gt;&gt;
+  &lt;br&gt;
+&lt;&lt;/if&gt;&gt;
+&lt;&lt;if V.loveInterest and V.loveInterest.primary is &quot;Danny&quot; and C.npc.Danny.lust gte 50 and Time.hour gte 21&gt;&gt;
+  &lt;&lt;link [[Stay the night|Danny Lust Stay Over]]&gt;&gt;&lt;&lt;/link&gt;&gt;
+  &lt;br&gt;
+&lt;&lt;/if&gt;&gt;
 &lt;&lt;link [[Leave|Bedroom]]&gt;&gt;&lt;&lt;/link&gt;&gt;
 &lt;&lt;elseif _loc is &quot;work&quot;&gt;&gt;
 A note: &quot;At Niki&#39;s photography. Back later.&quot;
@@ -225225,6 +225233,8 @@ Afterwards Danny stays close, breathing steady.
 &lt;br&gt;
 &lt;&lt;link [[Sleep|Danny Room]]&gt;&gt;&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="55" name="Canteen Lunch Danny" tags="" position="600,725" size="100,100">You sit with Danny. They eat quietly and show you a photo from earlier.
 &lt;&lt;npcincr Danny love 2&gt;&gt;
+&lt;&lt;set $plusHunger to Math.min(($plusHunger || 0) + 40, $plusHungerMax || 100)&gt;&gt;
+&lt;&lt;set $plusThirst to Math.min(($plusThirst || 0) + 30, $plusThirstMax || 100)&gt;&gt;
 &lt;br&gt;
 &lt;&lt;link [[Continue|Canteen]]&gt;&gt;&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="56" name="Shop Poppy Gift" tags="" position="725,725" size="100,100">&lt;&lt;effects&gt;&gt;
 You walk between shops, looking for something Poppy would like. You find a few items you think would work.
@@ -735304,11 +735314,7 @@ You swallow the pill. A daze descends on you and a perverse warmth grows in your
 	&lt;&lt;link [[Next|Pub Accost]]&gt;&gt;&lt;&lt;set $phase to 1&gt;&gt;&lt;&lt;/link&gt;&gt;
 	&lt;br&gt;
 
-&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="9461" name="Canteen" tags="" position="100,118350" size="100,100">&lt;&lt;if getDannyLocation() is &quot;canteen&quot; and $dannyIntro is 1 and !$daily.dannyCanteen&gt;&gt;
-  &lt;&lt;set $daily.dannyCanteen to 1&gt;&gt;
-  &lt;&lt;include &quot;Danny Canteen Natural&quot;&gt;&gt;
-&lt;&lt;/if&gt;&gt;
-&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;school&quot;&gt;&gt;&lt;&lt;schooleffects&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;sydneySchedule&gt;&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="9461" name="Canteen" tags="" position="100,118350" size="100,100">&lt;&lt;set $outside to 0&gt;&gt;&lt;&lt;set $location to &quot;school&quot;&gt;&gt;&lt;&lt;schooleffects&gt;&gt;&lt;&lt;effects&gt;&gt;&lt;&lt;sydneySchedule&gt;&gt;
 You are in the school canteen.
 &lt;&lt;dannyPresence &quot;canteen&quot;&gt;&gt;
 &lt;&lt;if $dannyIntro isnot 1 and Time.schoolDay and getDannyLocation() is &quot;canteen&quot;&gt;&gt;
@@ -735321,6 +735327,10 @@ You are in the school canteen.
 		The room is empty.
 	&lt;&lt;elseif $schoolstate is &quot;lunch&quot;&gt;&gt;
 		The room is packed with students chatting and eating their lunch.
+&lt;&lt;if getDannyLocation() is &quot;canteen&quot; and $dannyIntro is 1 and !$daily.dannyCanteen&gt;&gt;
+  &lt;&lt;set $daily.dannyCanteen to 1&gt;&gt;
+  &lt;&lt;include &quot;Danny Canteen Natural&quot;&gt;&gt;
+&lt;&lt;/if&gt;&gt;
 	&lt;&lt;else&gt;&gt;
 		The room is empty, aside from a small group of students chatting around one of the tables.
 	&lt;&lt;/if&gt;&gt;
