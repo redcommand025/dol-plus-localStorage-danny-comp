@@ -67843,6 +67843,66 @@ window.isHermOrCrossdresser = isHermOrCrossdresser;
 		TFWaterDragonBuffs: 0,
 	};
 
+	const defaultTransformationParts = {
+		traits: {
+			fangs: "disabled",
+			sharpEyes: "disabled",
+			dragonEyes: "disabled",
+			mateForLife: "disabled",
+			chase: "disabled",
+			flaunting: "disabled",
+			preyAnimal: "disabled",
+			strongFeet: "disabled",
+			predatoryAnimal: "disabled",
+			tempTolerance: "disabled",
+			aquatic: "disabled",
+			wdgrace: "disabled",
+			incognito: "disabled",
+			aquatail: "disabled",
+			lungs: "disabled",
+			vigorous: "disabled",
+			webbedfeet: "disabled",
+			strongnose: "disabled",
+			longtongue: "disabled",
+			kicks: "disabled",
+			activeTF: "disabled",
+			activeTFOverride: false,
+		},
+		angel: { halo: "disabled", wings: "disabled" },
+		fallenAngel: { halo: "disabled", wings: "disabled" },
+		demon: { horns: "disabled", wings: "disabled", tail: "disabled" },
+		cat: { ears: "disabled", tail: "disabled", heterochromia: "disabled" },
+		cow: { horns: "disabled", ears: "disabled", tail: "disabled" },
+		wolf: { ears: "disabled", tail: "disabled", pubes: "disabled", pits: "disabled", cheeks: "disabled" },
+		bird: { tail: "disabled", wings: "disabled", eyes: "disabled", malar: "disabled", plumage: "disabled", pubes: "disabled" },
+		fox: { ears: "disabled", tail: "disabled", cheeks: "disabled" },
+		bee: { ears: "disabled", tail: "disabled", wings: "disabled" },
+		sheep: { ears: "disabled", tail: "disabled", horns: "disabled" },
+		deer: { ears: "disabled", tail: "disabled", horns: "disabled" },
+		bear: { plumage: "disabled", pubes: "disabled", ears: "disabled", tail: "disabled" },
+		dragon: { tail: "disabled", wings: "disabled", eyes: "disabled", horns: "disabled", claws: "disabled", whisker: "disabled", fangs: "disabled" },
+		lizard: { horns: "disabled", tail: "disabled", eyes: "disabled" },
+		dolphin: { tail: "disabled" },
+		dog: { ears: "disabled", tail: "disabled" },
+		ghost: { eyes: "disabled", hitodama: "disabled", mist: "disabled", stream: "disabled", flame: "disabled" },
+		slime: { bubble: "disabled", stream: "disabled", core: "disabled" },
+		mushroom: { cap: "disabled", eyes: "disabled", spores: "disabled", mushrooms: "disabled" },
+		raccoon: { mask: "disabled", ears: "disabled", tail: "disabled" },
+		fish: { fins: "disabled", tail: "disabled" },
+		horse: { ears: "disabled", tail: "disabled" },
+		frog: { eyes: "disabled", cheeks: "disabled" },
+		spider: { eyes: "disabled", tail: "disabled" },
+		pig: { ears: "disabled", tail: "disabled" },
+		bunny: { ears: "disabled", tail: "disabled" },
+		okami: { ears: "disabled", tail: "disabled", wings: "disabled", misc: "disabled" },
+		seraphim: { wings: "disabled", plumage: "disabled", eyes: "disabled" },
+		kitsune: { ears: "disabled", tail: "disabled", cheeks: "disabled", misc: "disabled" },
+		waterdragon: { horns: "disabled", ears: "disabled", tail: "disabled" },
+		goblin: { ears: "disabled" },
+		eldritch: { skin: "disabled", tentacle: "disabled", eyes: "disabled", mist: "disabled" },
+		fae: { wings: "disabled", fairies: "disabled" },
+	};
+
 	const physicalStageVars = [
 		"wolfgirl",
 		"cat",
@@ -67918,6 +67978,25 @@ window.isHermOrCrossdresser = isHermOrCrossdresser;
 		return map;
 	}
 
+	function ensureParts(vars) {
+		const state = vars || {};
+		if (state.transformationParts == null || typeof state.transformationParts !== "object") {
+			state.transformationParts = {};
+		}
+		const parts = state.transformationParts;
+		Object.keys(defaultTransformationParts).forEach(group => {
+			const defaults = defaultTransformationParts[group];
+			if (parts[group] == null || typeof parts[group] !== "object") {
+				parts[group] = Object.assign({}, defaults);
+				return;
+			}
+			Object.keys(defaults).forEach(key => {
+				if (parts[group][key] == null) parts[group][key] = defaults[key];
+			});
+		});
+		return state;
+	}
+
 	function migrate(vars) {
 		const state = vars || {};
 		if (state.transformPreferred == null || state.transformPreferred === "") {
@@ -67927,7 +68006,7 @@ window.isHermOrCrossdresser = isHermOrCrossdresser;
 			if (state[name] == null) state[name] = defaultBuildsAndStages[name];
 		});
 		if (state.permanentTransform == null) state.permanentTransform = 0;
-		return state;
+		return ensureParts(state);
 	}
 
 	function fallbackPreferred(vars) {
@@ -68138,10 +68217,12 @@ window.isHermOrCrossdresser = isHermOrCrossdresser;
 		physicalStageVars,
 		historyVars,
 		defaultBuildsAndStages,
+		defaultTransformationParts,
 		label,
 		isQualified,
 		qualifiedKeys,
 		listboxMap,
+		ensureParts,
 		migrate,
 		fallbackPreferred,
 		resolve,
@@ -115076,6 +115157,9 @@ window.ClothesItem = ClothesItem;
 /* eslint-disable eqeqeq */
 DefineMacro("modelprepare-player-body", function () {
 	T.disabled = ["disabled", "hidden"];
+	if (typeof PlusTransform !== "undefined" && typeof PlusTransform.ensureParts === "function") {
+		PlusTransform.ensureParts(V);
+	}
 	T.modeloptions.skin_type = Skin.color.natural;
 	T.modeloptions.skin_tone = Skin.color.tan;
 
@@ -188247,40 +188331,45 @@ Macro.add("effects", {
 	handler() {
 		const fragment = effects();
 		this.output.append(fragment);
+		const applyStyle = (selector, props) => {
+			const el = document.querySelector(selector);
+			if (!el || !el.style) return;
+			Object.keys(props).forEach(key => {
+				el.style[key] = props[key];
+			});
+		};
 		$(document)
 			.off(":passageend.effects")
 			.on(":passageend.effects", function () {
 				if (!V.passage.includes("Waiting Room")) {
 					if (V.options.bigCanvas === true) {
 						if (V.options.images === 1) {
-							document.querySelector("body.has-images #story-caption #storyCaptionDiv").style.top = "267px";
-							document.querySelector("body.has-images #story-caption #storyCaptionDiv").style.height = "calc(100% - 95px - 1.32em)";
-							document.querySelector("body.has-images #story-caption #storyCaptionDiv").style.width = "392px";
-							document.querySelector("body.has-images #storyCaptionContent").style.width = "392px";
-							document.querySelector("#img").style.height = "267px";
-							document.querySelector("#img").style.width = "328px";
-							document.querySelector("canvas.mainCanvas").style.height = "358px";
-							document.querySelector("canvas.mainCanvas").style.width = "358px";
-							document.querySelector("#ui-bar").style.width = "24.5em";
-							document.querySelector("#stats").style.width = "392px";
+							applyStyle("body.has-images #story-caption #storyCaptionDiv", {
+								top: "267px",
+								height: "calc(100% - 95px - 1.32em)",
+								width: "392px",
+							});
+							applyStyle("body.has-images #storyCaptionContent", { width: "392px" });
+							applyStyle("#img", { height: "267px", width: "328px" });
+							applyStyle("canvas.mainCanvas", { height: "358px", width: "358px" });
+							applyStyle("#ui-bar", { width: "24.5em" });
+							applyStyle("#stats", { width: "392px" });
 						}
-						if (!Browser.isMobile.any() && !/joiplay|cyou\.joiplay\.joiplay|wv/i.test(navigator.userAgent))
-							document.querySelector("#story").style.marginLeft = "27em";
+						if (!Browser.isMobile.any() && !/joiplay|cyou\.joiplay\.joiplay|wv/i.test(navigator.userAgent)) applyStyle("#story", { marginLeft: "27em" });
 					} else {
 						if (V.options.images === 1) {
-							document.querySelector("body.has-images #story-caption #storyCaptionDiv").style.top = "192px";
-							document.querySelector("body.has-images #story-caption #storyCaptionDiv").style.height = "calc(100% - 20px - 1.32em)";
-							document.querySelector("body.has-images #story-caption #storyCaptionDiv").style.width = "280px";
-							document.querySelector("body.has-images #storyCaptionContent").style.width = "280px";
-							document.querySelector("#img").style.height = "192px";
-							document.querySelector("#img").style.width = "216px";
-							document.querySelector("canvas.mainCanvas").style.height = "256px";
-							document.querySelector("canvas.mainCanvas").style.width = "256px";
-							document.querySelector("#ui-bar").style.width = "17.5em";
-							document.querySelector("#stats").style.width = "280px";
+							applyStyle("body.has-images #story-caption #storyCaptionDiv", {
+								top: "192px",
+								height: "calc(100% - 20px - 1.32em)",
+								width: "280px",
+							});
+							applyStyle("body.has-images #storyCaptionContent", { width: "280px" });
+							applyStyle("#img", { height: "192px", width: "216px" });
+							applyStyle("canvas.mainCanvas", { height: "256px", width: "256px" });
+							applyStyle("#ui-bar", { width: "17.5em" });
+							applyStyle("#stats", { width: "280px" });
 						}
-						if (!Browser.isMobile.any() && !/joiplay|cyou\.joiplay\.joiplay|wv/i.test(navigator.userAgent))
-							document.querySelector("#story").style.marginLeft = "20em";
+						if (!Browser.isMobile.any() && !/joiplay|cyou\.joiplay\.joiplay|wv/i.test(navigator.userAgent)) applyStyle("#story", { marginLeft: "20em" });
 					}
 				}
 			});
@@ -391799,6 +391888,15 @@ Argument 2, where appropriate, determines whether it&#39;s the player undressing
 	&lt;&lt;if V.transformationParts.fox is undefined&gt;&gt;
 		&lt;&lt;set V.transformationParts.fox to {ears:&quot;disabled&quot;, tail:&quot;disabled&quot;, cheeks:&quot;disabled&quot;}&gt;&gt;
 	&lt;&lt;/if&gt;&gt;
+	&lt;&lt;if $transformationParts.bee is undefined&gt;&gt;
+		&lt;&lt;set $transformationParts.bee to {ears:&quot;disabled&quot;, tail:&quot;disabled&quot;, wings:&quot;disabled&quot;}&gt;&gt;
+	&lt;&lt;/if&gt;&gt;
+	&lt;&lt;if $transformationParts.sheep is undefined&gt;&gt;
+		&lt;&lt;set $transformationParts.sheep to {ears:&quot;disabled&quot;, tail:&quot;disabled&quot;, horns:&quot;disabled&quot;}&gt;&gt;
+	&lt;&lt;/if&gt;&gt;
+	&lt;&lt;if $transformationParts.deer is undefined&gt;&gt;
+		&lt;&lt;set $transformationParts.deer to {ears:&quot;disabled&quot;, tail:&quot;disabled&quot;, horns:&quot;disabled&quot;}&gt;&gt;
+	&lt;&lt;/if&gt;&gt;
 	&lt;&lt;if V.transformationParts.traits is undefined&gt;&gt;
 		&lt;&lt;set V.transformationParts.traits to {fangs:&quot;disabled&quot;, sharpEyes:&quot;disabled&quot;, mateForLife:&quot;disabled&quot;, chase:&quot;disabled&quot;, flaunting:&quot;disabled&quot;}&gt;&gt;
 		&lt;&lt;if $transformationParts.dragon is undefined&gt;&gt;
@@ -391929,6 +392027,7 @@ Argument 2, where appropriate, determines whether it&#39;s the player undressing
 		acc[key] = Object.assign({}, _defaultChimeraConfig[key], $chimera[key] || {});
 		return acc;
 	}, {})&gt;&gt;
+	&lt;&lt;run PlusTransform.ensureParts(V)&gt;&gt;
 &lt;&lt;/widget&gt;&gt;
 
 &lt;&lt;widget &quot;transform&quot;&gt;&gt;/*First arg is transformation, second is the intensity of change.*/
