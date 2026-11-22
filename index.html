@@ -229821,8 +229821,19 @@ You cup your hands under the tap and drink some cold water.
 	&lt;&lt;if _args[0] is &quot;beach&quot;&gt;&gt;&lt;&lt;set _pnLabel to &quot;Relieve yourself behind the dunes (0:03)&quot;&gt;&gt;&lt;&lt;elseif _args[0] is &quot;park&quot;&gt;&gt;&lt;&lt;set _pnLabel to &quot;Relieve yourself behind some bushes (0:03)&quot;&gt;&gt;&lt;&lt;elseif _args[0] is &quot;wolfcave&quot;&gt;&gt;&lt;&lt;set _pnLabel to &quot;Relieve yourself at the edge of the clearing (0:03)&quot;&gt;&gt;&lt;&lt;elseif _args[0] is &quot;farm&quot;&gt;&gt;&lt;&lt;set _pnLabel to &quot;Relieve yourself behind a hedge or barn (0:03)&quot;&gt;&gt;&lt;&lt;elseif _args[0] is &quot;moor&quot;&gt;&gt;&lt;&lt;set _pnLabel to &quot;Relieve yourself off the path in the heather (0:03)&quot;&gt;&gt;&lt;&lt;elseif _args[0] is &quot;estate&quot;&gt;&gt;&lt;&lt;set _pnLabel to &quot;Relieve yourself behind a hedge (0:03)&quot;&gt;&gt;&lt;&lt;elseif _args[0] is &quot;coast&quot;&gt;&gt;&lt;&lt;set _pnLabel to &quot;Relieve yourself behind the rocks (0:03)&quot;&gt;&gt;&lt;&lt;else&gt;&gt;&lt;&lt;set _pnLabel to &quot;Relieve yourself behind a tree (0:03)&quot;&gt;&gt;&lt;&lt;/if&gt;&gt;
 	&lt;&lt;set _pnOut to _args[0]&gt;&gt;&lt;&lt;capture _pnOut&gt;&gt;&lt;&lt;if _pnOut is &quot;park&quot; or _pnOut is &quot;beach&quot; or _pnOut is &quot;farm&quot; or _pnOut is &quot;estate&quot;&gt;&gt;&lt;&lt;icon &quot;bush.png&quot;&gt;&gt;&lt;&lt;elseif _pnOut is &quot;coast&quot;&gt;&gt;&lt;&lt;icon &quot;lake.png&quot;&gt;&gt;&lt;&lt;elseif _pnOut is &quot;moor&quot;&gt;&gt;&lt;&lt;mooricon&gt;&gt;&lt;&lt;else&gt;&gt;&lt;&lt;foresticon&gt;&gt;&lt;&lt;/if&gt;&gt;&lt;&lt;link _pnLabel &quot;Plus Needs Outdoor Toilet&quot;&gt;&gt;&lt;&lt;set $plusOutdoorSpot to _pnOut&gt;&gt;&lt;&lt;set $plusToiletReturn to $passage&gt;&gt;&lt;&lt;/link&gt;&gt;&lt;&lt;/capture&gt;&gt;
 	&lt;br&gt;
-&lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="259" name="Plus Needs Drink" tags="plusneeds" position="1100,3225" size="100,100">&lt;&lt;effects&gt;&gt;&lt;&lt;pass 2&gt;&gt;
+&lt;&lt;/widget&gt;&gt;</tw-passagedata><tw-passagedata pid="259" name="Plus Needs Drink" tags="plusneeds" position="1100,3225" size="100,100">&lt;&lt;effects&gt;&gt;
 &lt;&lt;set _pnSpot to $plusDrinkSpot&gt;&gt;
+&lt;&lt;set _pnFountain to (_pnSpot isnot &quot;stream&quot; and _pnSpot isnot &quot;lake&quot; and _pnSpot isnot &quot;cooler&quot; and _pnSpot isnot &quot;cafe&quot; and _pnSpot isnot &quot;shower&quot;)&gt;&gt;
+&lt;&lt;set _pnSip to 0&gt;&gt;
+&lt;&lt;if _pnFountain and $plusDrinkAgain&gt;&gt;
+	&lt;&lt;set _pnSip to 1&gt;&gt;
+&lt;&lt;/if&gt;&gt;
+&lt;&lt;set $plusDrinkAgain to 0&gt;&gt;
+&lt;&lt;if _pnSip&gt;&gt;
+	&lt;&lt;pass 1&gt;&gt;
+&lt;&lt;else&gt;&gt;
+	&lt;&lt;pass 2&gt;&gt;
+&lt;&lt;/if&gt;&gt;
 &lt;&lt;if _pnSpot is &quot;stream&quot;&gt;&gt;
 	You kneel by the stream, cup your hands in the cold, clear water and drink.
 	&lt;&lt;run plusNeedsConsume(0, 450, &quot;drink&quot;, plusNeedsML[&quot;stream&quot;])&gt;&gt;
@@ -229838,13 +229849,22 @@ You cup your hands under the tap and drink some cold water.
 &lt;&lt;elseif _pnSpot is &quot;shower&quot;&gt;&gt;
 	You find the tap by the beach showers and drink some fresh water.
 	&lt;&lt;run plusNeedsConsume(0, 400, &quot;drink&quot;, plusNeedsML[&quot;fountain&quot;])&gt;&gt;
+&lt;&lt;elseif _pnSip&gt;&gt;
+	You lean over the drinking fountain and take another sip of cool water.
+	&lt;&lt;run plusNeedsConsume(0, 400, &quot;drink&quot;, plusNeedsML[&quot;fountain&quot;])&gt;&gt;
 &lt;&lt;else&gt;&gt;
 	You lean over the drinking fountain and take a long drink of cool water.
 	&lt;&lt;run plusNeedsConsume(0, 400, &quot;drink&quot;, plusNeedsML[&quot;fountain&quot;])&gt;&gt;
 &lt;&lt;/if&gt;&gt;
 You feel refreshed.
 &lt;br&gt;&lt;br&gt;
-&lt;&lt;getouticon&gt;&gt;&lt;&lt;link [[Finish|$plusDrinkReturn]]&gt;&gt;&lt;&lt;set $eventskip to 1&gt;&gt;&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="260" name="Plus Needs Outdoor Toilet" tags="plusneeds" position="1225,3225" size="100,100">&lt;&lt;effects&gt;&gt;&lt;&lt;pass 3&gt;&gt;
+&lt;&lt;if _pnFountain&gt;&gt;
+	&lt;&lt;plusDrinkIcon &quot;fountain&quot;&gt;&gt;&lt;&lt;link [[Take another sip (0:01)|Plus Needs Drink]]&gt;&gt;&lt;&lt;set $plusDrinkAgain to 1&gt;&gt;&lt;&lt;/link&gt;&gt;
+	&lt;br&gt;
+	&lt;&lt;getouticon&gt;&gt;&lt;&lt;link [[Leave|$plusDrinkReturn]]&gt;&gt;&lt;&lt;set $eventskip to 1&gt;&gt;&lt;&lt;set $plusDrinkAgain to 0&gt;&gt;&lt;&lt;/link&gt;&gt;
+&lt;&lt;else&gt;&gt;
+	&lt;&lt;getouticon&gt;&gt;&lt;&lt;link [[Finish|$plusDrinkReturn]]&gt;&gt;&lt;&lt;set $eventskip to 1&gt;&gt;&lt;&lt;/link&gt;&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="260" name="Plus Needs Outdoor Toilet" tags="plusneeds" position="1225,3225" size="100,100">&lt;&lt;effects&gt;&gt;&lt;&lt;pass 3&gt;&gt;
 &lt;&lt;set _pnChance to plusNeedsSpotChance($plusOutdoorSpot)&gt;&gt;
 &lt;&lt;set _pnSpotted to random(1, 1000) lte _pnChance * 1000&gt;&gt;
 &lt;&lt;if typeof plusOutdoorWhere is &quot;function&quot;&gt;&gt;&lt;&lt;set _pnWhere to plusOutdoorWhere($plusOutdoorSpot)&gt;&gt;&lt;&lt;elseif $plusOutdoorSpot is &quot;beach&quot;&gt;&gt;&lt;&lt;set _pnWhere to &quot;behind a dune&quot;&gt;&gt;&lt;&lt;elseif $plusOutdoorSpot is &quot;park&quot;&gt;&gt;&lt;&lt;set _pnWhere to &quot;behind a clump of bushes&quot;&gt;&gt;&lt;&lt;elseif $plusOutdoorSpot is &quot;wolfcave&quot;&gt;&gt;&lt;&lt;set _pnWhere to &quot;at the edge of the clearing&quot;&gt;&gt;&lt;&lt;elseif $plusOutdoorSpot is &quot;farm&quot;&gt;&gt;&lt;&lt;set _pnWhere to &quot;behind a hedgerow at the edge of the field&quot;&gt;&gt;&lt;&lt;elseif $plusOutdoorSpot is &quot;moor&quot;&gt;&gt;&lt;&lt;set _pnWhere to &quot;behind a rise in the heather&quot;&gt;&gt;&lt;&lt;elseif $plusOutdoorSpot is &quot;estate&quot;&gt;&gt;&lt;&lt;set _pnWhere to &quot;behind a dense hedge&quot;&gt;&gt;&lt;&lt;elseif $plusOutdoorSpot is &quot;coast&quot;&gt;&gt;&lt;&lt;set _pnWhere to &quot;behind a rock below the path&quot;&gt;&gt;&lt;&lt;else&gt;&gt;&lt;&lt;set _pnWhere to &quot;behind a thick tree&quot;&gt;&gt;&lt;&lt;/if&gt;&gt;
